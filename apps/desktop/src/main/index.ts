@@ -139,7 +139,24 @@ function createWindow(): void {
     // taskbar. page-title-updated below keeps the renderer from overwriting
     // it with the page's <title>.
     title: instance.instanceId !== null ? `MultiZen — ${instance.instanceId}` : "MultiZen",
-    titleBarStyle: "hiddenInset",
+    // macOS: hiddenInset shows the traffic lights inset into the app header.
+    // Windows: hidden + titleBarOverlay replaces the stock white title bar
+    // (and its menu bar) with native min/max/close controls drawn over the
+    // dark header — hiddenInset is macOS-only and silently falls back to the
+    // default frame on Windows. Linux keeps the default frame (overlay
+    // support there is WM-dependent).
+    ...(process.platform === "darwin"
+      ? { titleBarStyle: "hiddenInset" as const }
+      : process.platform === "win32"
+        ? {
+            titleBarStyle: "hidden" as const,
+            titleBarOverlay: {
+              color: "#0a0b0f",
+              symbolColor: "#94a3b8",
+              height: 44,
+            },
+          }
+        : {}),
     backgroundColor: "#0a0b0f",
     icon: iconPath ?? undefined,
     webPreferences: {
@@ -160,10 +177,19 @@ function createWindow(): void {
   // Open maximized by default. maximize() while still hidden, then reveal —
   // the user's first frame is already the maximized window. An explicit
   // placement (FR-9c) or a restored NON-maximized geometry shows as-is.
-  mainWindow.once("ready-to-show", () => {
-    if (placement === null && (restore === null || restore.maximized)) mainWindow?.maximize();
-    mainWindow?.show();
-  });
+  // Safety net: ready-to-show can be starved indefinitely when the renderer's
+  // first paint is delayed (e.g. another MultiZen instance holds the shared
+  // userData cache) — a hung reveal is worse than a non-maximized first
+  // frame, so a timer reveals anyway.
+  let revealed = false;
+  const reveal = (): void => {
+    if (revealed || !mainWindow || mainWindow.isDestroyed()) return;
+    revealed = true;
+    if (placement === null && (restore === null || restore.maximized)) mainWindow.maximize();
+    mainWindow.show();
+  };
+  mainWindow.once("ready-to-show", reveal);
+  setTimeout(reveal, 5000);
 
   // FR-9b: persist geometry on close — normal (non-maximized) bounds + the
   // maximized flag — through settingsStore.update(), whose internal cache is

@@ -10,20 +10,29 @@ interface Props {
   onSettings: () => void;
 }
 
+// Window-frame layout differs per platform (read from the UA synchronously so
+// first paint is already correct — no layout shift while system:info loads):
+//   macOS: titleBarStyle hiddenInset → native traffic lights overlay the top
+//          LEFT; reserve a 60px spacer before the brand.
+//   Windows: titleBarStyle hidden + titleBarOverlay → native min/max/close
+//          overlay the top RIGHT (≈140px); keep content clear of them.
+const IS_MAC = /Macintosh|Mac OS X/.test(navigator.userAgent);
+const IS_WINDOWS = /Windows/.test(navigator.userAgent);
+
 export function TopBar({ totalCount, runningCount, mcpUrl, onCmdK, onSettings }: Props): JSX.Element {
   return (
     <div
       className="drag-region flex items-center gap-3.5 relative flex-shrink-0"
       style={{
         height: 44,
-        padding: "0 14px",
+        padding: IS_WINDOWS ? "0 152px 0 14px" : "0 14px",
         background: "rgba(10,11,15,0.7)",
         backdropFilter: "blur(20px)",
         borderBottom: "1px solid rgba(255,255,255,0.05)",
       }}
     >
       {/* macOS spacer for native traffic lights (we use titleBarStyle: hiddenInset) */}
-      <div style={{ width: 60 }} className="no-drag" aria-hidden />
+      {IS_MAC && <div style={{ width: 60 }} className="no-drag" aria-hidden />}
 
       {/* Brand — non-interactive decoration: pointer-events:none so the label
           isn't selectable and pointer events fall through to the drag region. */}
