@@ -297,7 +297,7 @@ export function ProfileTile({
             <Button
               variant="secondary"
               size="md"
-              fullWidth
+              className="flex-1"
               disabled
               leftIcon={<Loader2 size={11} className="animate-spin" />}
             >
@@ -318,7 +318,11 @@ export function ProfileTile({
               <Button
                 variant="accent"
                 size="md"
-                fullWidth
+                // flex-1, not w-full: a 100%-width flex item's basis demands the
+                // whole row, squeezing the sibling Stop-all button below its
+                // label width (text wrapped to two lines). flex-1 fills the
+                // leftover space after Stop-all takes its natural width.
+                className="flex-1"
                 disabled={pending}
                 onClick={handleNewInstance}
                 leftIcon={<Plus size={11} strokeWidth={2.5} />}

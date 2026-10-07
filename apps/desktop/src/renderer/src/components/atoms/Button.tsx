@@ -110,7 +110,7 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
       type="button"
       data-variant={variant}
       className={cn(
-        "mz-button inline-flex items-center justify-center font-medium",
+        "mz-button inline-flex items-center justify-center font-medium whitespace-nowrap",
         "transition-all duration-150",
         "disabled:opacity-50 disabled:pointer-events-none",
         SIZE_CLASSES[size],
