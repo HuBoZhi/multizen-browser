@@ -48,6 +48,8 @@ export function App(): JSX.Element {
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [info, setInfo] = useState<SystemInfo | null>(null);
   const [runs, setRuns] = useState<RunInfo[]>([]);
+  /** Last in-browser capture, shown in a preview modal (run model screenshots). */
+  const [shot, setShot] = useState<{ label: string; pngBase64: string } | null>(null);
   // Whether the Chromium runtime is ready — used to suppress the update banner
   // while the blocking first-run bootstrap modal is up, so they don't compete.
   const [chromiumReady, setChromiumReady] = useState(false);
@@ -279,6 +281,17 @@ export function App(): JSX.Element {
     await refresh();
   }
 
+  // In-browser screenshot of ONE running instance (CDP page capture — never
+  // the desktop, so foreground windows can't occlude it).
+  async function screenshotRun(run: RunInfo): Promise<void> {
+    try {
+      const { pngBase64 } = await window.multizen.runs.screenshot(run.runId);
+      setShot({ label: `${run.profileName ?? run.profileId} · :${run.mcpPort}`, pngBase64 });
+    } catch (e) {
+      showToast(`Screenshot failed: ${(e as Error).message}`);
+    }
+  }
+
   async function closeProfile(id: string): Promise<void> {
     // close() may reject if graceful shutdown throws, but the driver's
     // finally still emits "closed" (which drives its own refresh), so a
@@ -431,6 +444,7 @@ export function App(): JSX.Element {
                   onLaunch={launchProfile}
                   onNewInstance={newInstance}
                   onCloseRun={closeRun}
+                  onScreenshotRun={screenshotRun}
                   onStop={closeProfile}
                   onExport={(id) => setModal({ kind: "export-passphrase", profileId: id })}
                   onDuplicate={duplicateProfile}
@@ -471,6 +485,48 @@ export function App(): JSX.Element {
       >
         {editingProfile && (
           <ProfileEditSheet profile={editingProfile} onSaved={() => void refresh()} />
+        )}
+      </Modal>
+
+      <Modal
+        open={shot !== null}
+        title={`Screenshot — ${shot?.label ?? ""}`}
+        subtitle="Captured from inside the browser via CDP — page content only, never the desktop."
+        width={860}
+        onClose={() => setShot(null)}
+        footer={
+          shot && (
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                className="mz-button mz-button-secondary"
+                onClick={() => {
+                  // Copy the PNG to the OS clipboard.
+                  const bin = atob(shot.pngBase64);
+                  const buf = new Uint8Array(bin.length);
+                  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+                  void navigator.clipboard
+                    .write([new ClipboardItem({ "image/png": new Blob([buf], { type: "image/png" }) })])
+                    .catch(() => {});
+                }}
+              >
+                Copy image
+              </button>
+              <a
+                className="mz-button mz-button-primary"
+                download={`multizen-${shot.label.replace(/[^a-z0-9-]+/gi, "-")}-${Date.now()}.png`}
+                href={`data:image/png;base64,${shot.pngBase64}`}
+              >
+                Save PNG
+              </a>
+            </div>
+          )
+        }
+      >
+        {shot && (
+          <div className="overflow-auto rounded-xl" style={{ maxHeight: "58vh", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.1)" }}>
+            <img src={`data:image/png;base64,${shot.pngBase64}`} alt="Browser page screenshot" className="w-full block" />
+          </div>
         )}
       </Modal>
 

@@ -103,6 +103,8 @@ export interface MultizenApi {
     list: () => Promise<RunInfo[]>;
     /** Close ONE running instance by run id (siblings stay up). */
     close: (runId: string) => Promise<void>;
+    /** Capture the instance's page content via CDP (base64 PNG). */
+    screenshot: (runId: string) => Promise<{ pngBase64: string }>;
   };
   system: {
     info: () => Promise<SystemInfo>;

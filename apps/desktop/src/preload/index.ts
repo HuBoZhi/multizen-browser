@@ -123,6 +123,9 @@ const api = {
     list: (): Promise<RunInfo[]> => ipcRenderer.invoke("runs:list"),
     /** Close ONE running instance by run id (siblings stay up). */
     close: (runId: string): Promise<void> => ipcRenderer.invoke("runs:close", runId),
+    /** Capture the instance's page content via CDP (base64 PNG). */
+    screenshot: (runId: string): Promise<{ pngBase64: string }> =>
+      ipcRenderer.invoke("runs:screenshot", runId),
   },
   system: {
     info: (): Promise<SystemInfo> => ipcRenderer.invoke("system:info"),

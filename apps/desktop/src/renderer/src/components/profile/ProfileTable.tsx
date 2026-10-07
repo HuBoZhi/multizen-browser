@@ -13,6 +13,7 @@ interface Props {
   onLaunch: (id: string) => Promise<void> | void;
   onNewInstance: (id: string) => Promise<void> | void;
   onCloseRun: (runId: string) => void;
+  onScreenshotRun: (run: RunInfo) => void;
   onStop: (id: string) => Promise<void> | void;
   onExport: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -43,6 +44,7 @@ export function ProfileTable({
   onLaunch,
   onNewInstance,
   onCloseRun,
+  onScreenshotRun,
   onStop,
   onExport,
   onDuplicate,

@@ -45,6 +45,8 @@ interface Props {
   onNewInstance: (id: string) => void;
   /** Close exactly one running instance by run id. */
   onCloseRun: (runId: string) => void;
+  /** Capture ONE instance's page content (in-browser CDP screenshot). */
+  onScreenshotRun: (run: RunInfo) => void;
   onStop: (id: string) => void;
   onExport: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -62,6 +64,7 @@ export function Constellation({
   onStop,
   onNewInstance,
   onCloseRun,
+  onScreenshotRun,
   onExport,
   onDuplicate,
   onDelete,
@@ -240,6 +243,7 @@ export function Constellation({
             onLaunch={onLaunch}
             onNewInstance={onNewInstance}
             onCloseRun={onCloseRun}
+            onScreenshotRun={onScreenshotRun}
             onStop={onStop}
             onExport={onExport}
             onDuplicate={onDuplicate}
@@ -262,6 +266,7 @@ export function Constellation({
                 onLaunch={() => onLaunch(p.id)}
                 onNewInstance={() => onNewInstance(p.id)}
                 onCloseRun={onCloseRun}
+                onScreenshotRun={onScreenshotRun}
                 onStop={() => onStop(p.id)}
                 onExport={() => onExport(p.id)}
                 onDuplicate={() => onDuplicate(p.id)}

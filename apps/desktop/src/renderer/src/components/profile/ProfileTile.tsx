@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type JSX } from "react";
 import { createPortal } from "react-dom";
-import { Loader2, MoreHorizontal, Pencil, Play, Plus, RefreshCw, Square, X, Zap } from "lucide-react";
+import { Camera, Loader2, MoreHorizontal, Pencil, Play, Plus, RefreshCw, Square, X, Zap } from "lucide-react";
 import type { RunInfo } from "@multizen/types";
 import type { ProfileSummary } from "../../types";
 import {
@@ -62,6 +62,8 @@ interface Props {
   onNewInstance: () => Promise<void> | void;
   /** Close exactly one running instance by run id. */
   onCloseRun: (runId: string) => void;
+  /** Capture ONE instance's page content (in-browser CDP screenshot). */
+  onScreenshotRun: (run: RunInfo) => void;
   onStop: () => Promise<void> | void;
   onExport: () => void;
   onDuplicate: () => void;
@@ -76,6 +78,7 @@ export function ProfileTile({
   onLaunch,
   onNewInstance,
   onCloseRun,
+  onScreenshotRun,
   onStop,
   onExport,
   onDuplicate,
@@ -130,6 +133,11 @@ export function ProfileTile({
   function handleCloseRun(e: React.MouseEvent, runId: string): void {
     e.stopPropagation();
     onCloseRun(runId);
+  }
+
+  function handleScreenshotRun(e: React.MouseEvent, run: RunInfo): void {
+    e.stopPropagation();
+    onScreenshotRun(run);
   }
 
   async function handleStop(): Promise<void> {
@@ -262,6 +270,15 @@ export function ProfileTile({
                 <span className="mono text-[9px] text-slate-400 ml-auto flex-shrink-0">
                   {relativeTime(r.startedAt)}
                 </span>
+                <button
+                  type="button"
+                  onClick={(e) => handleScreenshotRun(e, r)}
+                  title="Screenshot this instance's page (in-browser capture, never the desktop)"
+                  aria-label="Screenshot this instance"
+                  className="no-drag w-5 h-5 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-200 hover:bg-white/10 transition-colors cursor-pointer border-0 bg-transparent flex-shrink-0"
+                >
+                  <Camera size={11} />
+                </button>
                 <button
                   type="button"
                   onClick={(e) => handleCloseRun(e, r.runId)}

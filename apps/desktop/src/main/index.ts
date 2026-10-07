@@ -592,6 +592,9 @@ app.whenReady().then(async () => {
   // (the MCP panel renders these so the user can copy an endpoint per run).
   ipcMain.handle("runs:list", () => browserDriver.listRuns());
   ipcMain.handle("runs:close", (_e, runId: string) => browserDriver.closeRun(runId));
+  // In-browser screenshot: captures the instance's PAGE content via CDP
+  // (viewport only, never the desktop — foreground windows can't occlude it).
+  ipcMain.handle("runs:screenshot", (_e, runId: string) => browserDriver.screenshot(runId));
   ipcMain.handle("profiles:get", (_e, id: string) => profileManager.get(id));
   ipcMain.handle("profiles:create", (_e, input: Parameters<ProfileManager["create"]>[0]) =>
     profileManager.create(input),
