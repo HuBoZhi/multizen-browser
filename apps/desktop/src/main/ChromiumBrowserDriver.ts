@@ -268,16 +268,6 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
       });
     }
 
-    // Reopen last-session tabs on every launch — what Multilogin / AdsPower /
-    // GoLogin do by default. Restore itself is forced by the
-    // --restore-last-session CLI flag below; here we only mark the previous exit
-    // as clean in the Default profile's Preferences (exit_type=Normal) so
-    // Chromium doesn't skip restore or show a crash infobar. Mutated before
-    // spawn (Chrome must be off to avoid corrupting the pref file).
-    await ensureSessionRestore(browserDataDir).catch((e: unknown) => {
-      console.warn("[multizen] failed to write session restore preference:", (e as Error).message);
-    });
-
     // Best-effort: suppress CFT's "is only for automated testing" infobar
     // via the macOS managed-preference. Idempotent — only prompts for
     // admin if the plist doesn't already exist or doesn't have the key.
@@ -308,12 +298,10 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
       `--remote-debugging-port=${port}`,
       "--no-first-run",
       "--no-default-browser-check",
-      // Force-restore the previous session's tabs at startup. This flag is what
-      // actually drives restore (writing the protected restore_on_startup pref
-      // just gets reset by Chromium); combined with ensureSessionRestore marking
-      // a clean exit and our CDP graceful shutdown, tabs come back reliably
-      // across stop/launch even after a crash.
-      "--restore-last-session",
+      // Launch fresh: never reopen the previous session's tabs. This also
+      // suppresses the "Restore pages?" bubble after a crashed run, so old
+      // tabs can never come back uninvited.
+      "--hide-crash-restore-bubble",
       "--disable-features=Translate,MediaRouter",
       // Don't back Chromium's "Safe Storage" key with the OS keychain/keyring.
       // Two reasons: (1) our engine bundle is ad-hoc signed, so on macOS the
@@ -491,18 +479,15 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
         if (value !== undefined) cleanEnv[key] = value;
       }
     }
-    // Start page (positional URL) — only on first run, i.e. when there is no
-    // restorable session. With `--restore-last-session` a returning profile
-    // reopens its real tabs, so we must NOT stack an extra tab; on first launch
-    // there's nothing to restore, so the command-line URL becomes the initial
-    // tab (verified on CloakBrowser 145 — pref `startup_urls` is ignored there,
-    // a positional URL works). Defaults to DuckDuckGo when the profile has no
-    // explicit start page. Must be the LAST argv entry (positional).
-    if (!(await hasRestorableSession(browserDataDir))) {
-      // sanitizeStartUrl rejects non-http(s)/about (incl. `-`-prefixed tokens
-      // Chromium would treat as switches) → falls back to the default.
-      args.push(sanitizeStartUrl(profile.startUrl));
-    }
+    // Start page (positional URL) — every launch opens exactly one tab: the
+    // profile's start page (defaults to DuckDuckGo; set it to about:blank for
+    // a bare page). Session restore is off, so there is no returning-profile
+    // case to special-case (verified on CloakBrowser 145 — pref
+    // `startup_urls` is ignored there, a positional URL works). Must be the
+    // LAST argv entry (positional).
+    // sanitizeStartUrl rejects non-http(s)/about (incl. `-`-prefixed tokens
+    // Chromium would treat as switches) → falls back to the default.
+    args.push(sanitizeStartUrl(profile.startUrl));
 
     const child = spawn(chromiumPath, args, {
       detached: false,
@@ -1785,15 +1770,6 @@ const WEBRTC_BLOCK_SCRIPT = `
 `;
 
 /**
- * Mark the profile's last exit as clean in `Default/Preferences`
- * (exit_type=Normal / exited_cleanly=true) so a relaunch reopens the previous
- * tabs (via --restore-last-session) without the "Restore tabs?" crash infobar,
- * even after we killed Chromium ungracefully. Called before each spawn —
- * Chromium must NOT be running, or we'll corrupt its pref file (it writes
- * Preferences atomically with no flock). Deliberately does NOT touch the
- * protected `restore_on_startup` pref — see the note in the body.
- */
-/**
  * Run `chromium --version` and parse the version triple. Returns null
  * if the probe fails — the caller should then trust whatever version is
  * baked into the profile.
@@ -2088,59 +2064,6 @@ async function unlinkSingletonFiles(
     await fsp.unlink(path).catch(() => {});
   }
   console.log(`[multizen] cleaned stale Singleton files (${reason})`);
-}
-
-/**
- * Whether the profile has a session Chromium can restore on launch. Used to
- * decide if we should open the start page (only on a genuine first run).
- * Chromium writes tab/session state under `Default/Sessions/`; older builds
- * also keep `Default/Current Session`. Any of these present → restorable.
- */
-async function hasRestorableSession(dataDir: string): Promise<boolean> {
-  const sessionsDir = join(dataDir, "Default", "Sessions");
-  try {
-    const entries = await fsp.readdir(sessionsDir);
-    if (entries.length > 0) return true;
-  } catch {
-    // no Sessions dir yet
-  }
-  return existsSync(join(dataDir, "Default", "Current Session"));
-}
-
-async function ensureSessionRestore(dataDir: string): Promise<void> {
-  const prefsPath = join(dataDir, "Default", "Preferences");
-  let prefs: Record<string, unknown> = {};
-  try {
-    const raw = await fsp.readFile(prefsPath, "utf8");
-    prefs = JSON.parse(raw) as Record<string, unknown>;
-  } catch {
-    // Profile hasn't been launched yet — create minimal prefs and let
-    // Chromium fill in the rest on first run.
-  }
-  const profileSection = (prefs.profile as Record<string, unknown>) ?? {};
-
-  // Mark the previous run as a clean exit. If Chromium crashed or we killed it
-  // ungracefully, exit_type gets stuck on "Crashed" and the next launch shows
-  // the "Restore tabs?" infobar (or silently skips restore on some builds,
-  // including CloakBrowser). exit_type / exited_cleanly are NOT protected prefs,
-  // so editing them on disk is safe.
-  profileSection.exit_type = "Normal";
-  profileSection.exited_cleanly = true;
-
-  // NOTE: we deliberately do NOT write session.restore_on_startup here. It IS a
-  // protected/tracked pref (Secure Preferences stores a MAC + super_mac for it),
-  // so editing it outside Chromium trips the "Your settings were changed by an
-  // unknown app" reset of the WHOLE protected set — including the default search
-  // engine — and Chromium resets our value to None anyway. Tab restore is driven
-  // by the --restore-last-session CLI flag (passed in launch()), which forces
-  // restore regardless of this pref, so the write was both harmful and useless.
-  prefs.profile = profileSection;
-
-  await fsp.mkdir(join(dataDir, "Default"), { recursive: true });
-  // Atomic-ish write: write to .tmp then rename.
-  const tmpPath = `${prefsPath}.multizen.tmp`;
-  await fsp.writeFile(tmpPath, JSON.stringify(prefs));
-  await fsp.rename(tmpPath, prefsPath);
 }
 
 function sleep(ms: number): Promise<void> {

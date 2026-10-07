@@ -148,11 +148,11 @@ export class CdpSession {
    * Canonical graceful Chromium shutdown via CDP `Browser.close`. This is
    * the macOS ⌘Q equivalent: it walks Chromium through its full quit
    * sequence so `Default/Sessions/Tabs_*` and `Last Session` are flushed
-   * to disk before the process exits — which is what makes the next
-   * launch's "Continue where you left off" actually restore tabs.
+   * to disk and the exit is marked clean before the process exits —
+   * no crash markers left for the next launch.
    *
    * SIGINT/SIGTERM alone are not reliable: SIGTERM kills too fast (lost
-   * tabs), SIGINT works on Linux Chrome but on macOS Chromium often
+   * session state), SIGINT works on Linux Chrome but on macOS Chromium often
    * exits via a path that skips the session-state writer.
    *
    * The websocket disconnects mid-call, so we don't await — we just fire

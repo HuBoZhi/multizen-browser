@@ -423,8 +423,8 @@ app.whenReady().then(async () => {
           const extension = await extensionsService.installFromWebStore(profileId, extensionId);
           sendToRenderer("extensions:installed", { ok: true, profileId, extension });
           // Apply immediately: Chromium only reads --load-extension at startup,
-          // so relaunch the profile (session restore brings tabs back) instead
-          // of making the user close + reopen it by hand.
+          // so relaunch the profile (reopens with its start page) instead of
+          // making the user close + reopen it by hand.
           if (browserDriver.isRunning(profileId)) {
             await browserDriver.close(profileId).catch(() => {});
             await browserDriver.launch(profileId).catch((e: unknown) => {
