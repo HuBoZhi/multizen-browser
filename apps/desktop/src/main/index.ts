@@ -41,6 +41,7 @@ import {
   readManifestIcon,
 } from "./extensions/extensionStore.ts";
 import { probeProxyGeo, type ProxyGeoResult } from "./proxyGeo.ts";
+import { initInstanceConfig, resolveMcpPort } from "./instanceConfig.ts";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
@@ -105,6 +106,9 @@ function createWindow(): void {
     height: 800,
     minWidth: 900,
     minHeight: 600,
+    // Hidden until first paint + maximize, so the window never flashes at
+    // 1280×800 before growing (FR-9a of the requirements doc).
+    show: false,
     titleBarStyle: "hiddenInset",
     backgroundColor: "#0a0b0f",
     icon: iconPath ?? undefined,
@@ -122,6 +126,13 @@ function createWindow(): void {
     void mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
   }
 
+  // Open maximized by default. maximize() while still hidden, then reveal —
+  // the user's first frame is already the maximized window.
+  mainWindow.once("ready-to-show", () => {
+    mainWindow?.maximize();
+    mainWindow?.show();
+  });
+
   mainWindow.webContents.on("did-fail-load", (_e, code, description, url) => {
     process.stderr.write(`Renderer failed to load (${code} ${description}): ${url}\n`);
   });
@@ -137,6 +148,12 @@ app.setAboutPanelOptions({
   applicationName: "MultiZen",
   applicationVersion: app.getVersion(),
 });
+
+// Multi-instance config (FR-1): parse --instance-id / --data-dir / --mcp-port /
+// --launch-profile and redirect userData BEFORE anything reads it — setName
+// above first (it feeds the default %APPDATA%/MultiZen path), then setPath.
+// With no instance flags this is a no-op and behavior is exactly upstream.
+const instance = initInstanceConfig(process.argv);
 
 app.whenReady().then(async () => {
   // macOS: explicitly set the dock icon. In packaged .app bundles macOS
@@ -157,6 +174,15 @@ app.whenReady().then(async () => {
 
   settingsStore = new SettingsStore(defaultSettingsPath(userData));
   cachedSettings = await settingsStore.load();
+
+  // FR-2: effective MCP port = --mcp-port > MULTIZEN_MCP_PORT > settings.json
+  // > default 7777. A CLI/env override lives in memory only — it never gets
+  // written back to settings.json, so scripted instances stay disposable.
+  const mcpPort = resolveMcpPort(instance, cachedSettings.mcpHttpPort);
+  if (mcpPort.source === "cli" || mcpPort.source === "env") {
+    cachedSettings = { ...cachedSettings, mcpHttpPort: mcpPort.port };
+  }
+  process.stdout.write(`[multizen] mcp port=${mcpPort.port} (source: ${mcpPort.source})\n`);
 
   profileManager = new ProfileManager({
     dbPath: join(dataRoot, "profiles.db"),
@@ -328,10 +354,56 @@ app.whenReady().then(async () => {
         () => createMultizenMcpServer({ profileManager, browserDriver, activityLog }).server,
       );
     } catch (e) {
-      // Port collision is non-fatal — log and continue
+      // Port collision when the port came from settings: keep upstream's
+      // non-fatal behavior (log and continue without MCP).
       process.stderr.write(`MCP HTTP transport failed to start: ${String(e)}\n`);
       httpTransport = null;
+      // FR-2: a port EXPLICITLY requested via --mcp-port / MULTIZEN_MCP_PORT
+      // must not silently degrade to "app runs with no MCP" — scripted
+      // multi-instance launches would look fine while being uncontrollable.
+      // Fail loudly: dialog + non-zero exit.
+      if (mcpPort.source === "cli" || mcpPort.source === "env") {
+        dialog.showErrorBox(
+          "MultiZen — MCP port unavailable",
+          `This instance was started with MCP port ${mcpPort.port}, but that port is already in use.\n\n` +
+            `Pick another port, e.g. --mcp-port=${mcpPort.port + 1}, or stop the process holding ${mcpPort.port}.\n\n` +
+            `${String(e)}`,
+        );
+        app.exit(1);
+        return;
+      }
     }
+  }
+
+  // FR-8: --launch-profile=<id|name> — auto-launch the profile once settings,
+  // driver and MCP transport are wired, so a scripted instance comes up
+  // ready-to-drive with zero GUI interaction. browserDriver.launch() waits for
+  // the Chromium engine (first run downloads it) before spawning.
+  if (instance.launchProfile) {
+    const wanted = instance.launchProfile;
+    const profiles = profileManager.list();
+    const target =
+      profiles.find((p) => p.id === wanted) ??
+      profiles.find((p) => p.name.toLowerCase() === wanted.toLowerCase());
+    if (!target) {
+      dialog.showErrorBox(
+        "MultiZen — profile not found",
+        `--launch-profile "${wanted}" matches no profile in this instance ` +
+          `(${instance.instanceId ?? "default"}, ${profiles.length} profile(s) present).\n\n` +
+          `Pass a profile id or exact name, or drop the flag to start with the profile list.`,
+      );
+      app.exit(1);
+      return;
+    }
+    process.stdout.write(`[multizen] --launch-profile: starting "${target.name}" (${target.id})\n`);
+    void browserDriver.launch(target.id).catch((e: unknown) => {
+      // Non-fatal: the app stays usable, the failure is surfaced clearly.
+      process.stderr.write(`[multizen] --launch-profile failed: ${String(e)}\n`);
+      dialog.showErrorBox(
+        "MultiZen — profile failed to launch",
+        `--launch-profile "${target.name}" (${target.id}) could not start:\n\n${String(e)}`,
+      );
+    });
   }
 
   // Profile IPC
