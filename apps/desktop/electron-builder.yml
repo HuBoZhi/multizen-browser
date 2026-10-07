@@ -111,11 +111,13 @@ nsis:
   perMachine: false
   allowToChangeInstallationDirectory: true
 
+# FORK CHANGE: the auto-updater tracks THIS repo's releases. Upstream
+# (multizenteam/multizen-browser) would silently upgrade the fork back to
+# official builds — wiping every multi-instance change — the moment upstream
+# publishes a newer version. Pointing at our fork makes autoUpdate a no-op
+# until WE cut a release here.
 publish:
   provider: github
-  owner: multizenteam
+  owner: HuBoZhi
   repo: multizen-browser
-  # Cut a published release (not draft) directly from CI. Default is
-  # draft which means /releases/latest redirector misses it until a
-  # human un-drafts manually — we don't want that friction.
   releaseType: release
