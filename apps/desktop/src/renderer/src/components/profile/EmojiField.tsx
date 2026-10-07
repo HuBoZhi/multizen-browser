@@ -4,6 +4,7 @@ import emojiData from "@emoji-mart/data";
 import { Avatar } from "../atoms";
 import { defaultEmoji, profileEmoji } from "../../lib/profileEmoji";
 import { emojiTint } from "../../lib/emojiTint";
+import { useI18n } from "../../lib/i18n";
 
 /**
  * Avatar emoji picker for create/edit. Shows the resolved avatar (the custom
@@ -27,6 +28,7 @@ export function EmojiField({
   /** Real profile id when editing; on create pass undefined (seeded from name). */
   id?: string;
 }): JSX.Element {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -60,9 +62,9 @@ export function EmojiField({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        title="Set an emoji avatar"
+        title={t("Set an emoji avatar")}
         className="relative block rounded-[11px] transition-transform hover:scale-[1.03]"
-        aria-label="Choose emoji avatar"
+        aria-label={t("Choose emoji avatar")}
       >
         <Avatar emoji={shown} tint={tint} size={44} />
       </button>
@@ -75,12 +77,12 @@ export function EmojiField({
           <div
             className="flex items-center justify-between px-3 py-2"
             style={{
-              background: "rgba(15,16,22,0.98)",
+              background: "rgba(23,23,23,0.98)",
               boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)",
             }}
           >
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">
-              Emoji avatar
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-neutral-400">
+              {t("Emoji avatar")}
             </span>
             <button
               type="button"
@@ -90,12 +92,12 @@ export function EmojiField({
               }}
               className={
                 value === undefined
-                  ? "text-[10px] font-semibold text-purple-300"
-                  : "text-[10px] font-semibold text-slate-400 hover:text-slate-200 transition-colors"
+                  ? "text-[10px] font-semibold text-neutral-200"
+                  : "text-[10px] font-semibold text-neutral-400 hover:text-neutral-200 transition-colors"
               }
-              title={`Auto — classifier picks ${derived}`}
+              title={t("Auto — classifier picks {emoji}", { emoji: derived })}
             >
-              Auto {derived}
+              {t("Auto {emoji}", { emoji: derived })}
             </button>
           </div>
           <Picker

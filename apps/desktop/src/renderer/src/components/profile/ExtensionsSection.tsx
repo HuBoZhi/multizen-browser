@@ -1,6 +1,7 @@
 import { useEffect, useState, type Dispatch, type JSX, type SetStateAction } from "react";
 import { LayoutGrid, Library, Loader2, Plus, Trash2 } from "lucide-react";
 import type { ExtensionConfig } from "../../types";
+import { useI18n } from "../../lib/i18n";
 import { ExtensionCatalog } from "./ExtensionCatalog";
 import { ExtIcon } from "./ExtIcon";
 import type { CatalogExtension } from "../../data/extensionCatalog";
@@ -28,14 +29,16 @@ export function ExtensionsSection({
   // compose against the latest list rather than a stale closure snapshot.
   onStagedChange?: Dispatch<SetStateAction<ExtensionConfig[]>>;
 }): JSX.Element {
+  const { t } = useI18n();
   if (!profileId) {
     if (onStagedChange) {
       return <StagingExtensions staged={staged ?? []} onChange={onStagedChange} />;
     }
     return (
-      <div className="text-[12px] text-slate-400 leading-relaxed">
-        Save the profile first — then you can add extensions (.crx / .zip / folder, or by
-        Chrome Web Store link) and they&apos;ll load in this profile only.
+      <div className="text-[12px] text-neutral-400 leading-relaxed">
+        {t(
+          "Save the profile first — then you can add extensions (.crx / .zip / folder, or by Chrome Web Store link) and they'll load in this profile only.",
+        )}
       </div>
     );
   }
@@ -45,6 +48,7 @@ export function ExtensionsSection({
 // ─── Live mode (edit / saved profile) ─────────────────────────────────────
 
 function LiveExtensions({ profileId }: { profileId: string }): JSX.Element {
+  const { t } = useI18n();
   const [items, setItems] = useState<ExtensionConfig[]>([]);
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
@@ -131,9 +135,9 @@ function LiveExtensions({ profileId }: { profileId: string }): JSX.Element {
         />
       )}
 
-      <div className="text-[11px] text-slate-400 leading-relaxed">
-        Or open the Chrome Web Store inside this profile and click <b>Add to MultiZen</b>.
-        Changes apply on the next launch.
+      <div className="text-[11px] text-neutral-400 leading-relaxed">
+        {t("Or open the Chrome Web Store inside this profile and click")} <b>Add to MultiZen</b>
+        {t(". Changes apply on the next launch.")}
       </div>
 
       {error && <ErrorBox message={error} />}
@@ -150,6 +154,7 @@ function StagingExtensions({
   staged: ExtensionConfig[];
   onChange: Dispatch<SetStateAction<ExtensionConfig[]>>;
 }): JSX.Element {
+  const { t } = useI18n();
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -257,19 +262,20 @@ function StagingExtensions({
         className="btn-ghost px-3 py-[7px] text-[12px] rounded-[9px] inline-flex items-center gap-1.5"
       >
         <Library size={12} />
-        {showAttach ? "Hide your extensions" : "Attach from your profiles"}
+        {showAttach ? t("Hide your extensions") : t("Attach from your profiles")}
       </button>
 
       {showAttach && (
         <div className="space-y-1.5">
           {available === null ? (
-            <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
-              <Loader2 size={11} className="animate-spin" /> Loading…
+            <div className="text-[11px] text-neutral-400 flex items-center gap-1.5">
+              <Loader2 size={11} className="animate-spin" /> {t("Loading…")}
             </div>
           ) : attachable.length === 0 ? (
-            <div className="text-[11px] text-slate-400 leading-relaxed">
-              No other extensions in your library yet. Add one above and it becomes attachable
-              to future profiles.
+            <div className="text-[11px] text-neutral-400 leading-relaxed">
+              {t(
+                "No other extensions in your library yet. Add one above and it becomes attachable to future profiles.",
+              )}
             </div>
           ) : (
             attachable.map((ext) => (
@@ -284,17 +290,18 @@ function StagingExtensions({
                 }}
               >
                 <ExtIcon id={ext.id} ext={ext} profileId={null} />
-                <span className="flex-1 text-[12px] text-slate-200 truncate">{ext.name}</span>
-                <Plus size={13} className="text-slate-400 shrink-0" />
+                <span className="flex-1 text-[12px] text-neutral-200 truncate">{ext.name}</span>
+                <Plus size={13} className="text-neutral-400 shrink-0" />
               </button>
             ))
           )}
         </div>
       )}
 
-      <div className="text-[11px] text-slate-400 leading-relaxed">
-        Extensions load on first launch. Login/state is not copied — attached extensions start
-        fresh in this profile.
+      <div className="text-[11px] text-neutral-400 leading-relaxed">
+        {t(
+          "Extensions load on first launch. Login/state is not copied — attached extensions start fresh in this profile.",
+        )}
       </div>
 
       {error && <ErrorBox message={error} />}
@@ -315,6 +322,7 @@ function ExtRow({
   onToggle: (enabled: boolean) => void;
   onRemove: () => void;
 }): JSX.Element {
+  const { t } = useI18n();
   return (
     <div
       className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
@@ -324,21 +332,21 @@ function ExtRow({
       }}
     >
       <ExtIcon id={ext.id} ext={ext} profileId={profileId} />
-      <span className="flex-1 text-[12px] text-slate-200 truncate">{ext.name}</span>
-      <label className="flex items-center gap-1.5 text-[11px] text-slate-400 cursor-pointer">
+      <span className="flex-1 text-[12px] text-neutral-200 truncate">{ext.name}</span>
+      <label className="flex items-center gap-1.5 text-[11px] text-neutral-400 cursor-pointer">
         <input
           type="checkbox"
           checked={ext.enabled}
           onChange={(e) => onToggle(e.target.checked)}
-          className="w-3.5 h-3.5 rounded accent-purple-500"
+          className="w-3.5 h-3.5 rounded accent-neutral-300"
         />
-        on
+        {t("on")}
       </label>
       <button
         type="button"
-        aria-label="Remove"
+        aria-label={t("Remove")}
         onClick={onRemove}
-        className="text-slate-400 hover:text-red-400 transition-colors"
+        className="text-neutral-400 hover:text-red-400 transition-colors"
       >
         <Trash2 size={13} />
       </button>
@@ -361,14 +369,15 @@ function AddRow({
   onAddFile: () => void;
   onAddFolder: () => void;
 }): JSX.Element {
+  const { t } = useI18n();
   return (
     <>
       <div className="flex gap-2">
         <input
           value={url}
           onChange={(e) => onUrl(e.target.value)}
-          placeholder="Chrome Web Store URL or extension ID"
-          className="flex-1 px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 placeholder:text-slate-400 outline-none focus:bg-white/[0.05] transition-colors"
+          placeholder={t("Chrome Web Store URL or extension ID")}
+          className="flex-1 px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-neutral-200 placeholder:text-neutral-400 outline-none focus:bg-white/[0.05] transition-colors"
           style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)" }}
         />
         <button
@@ -378,7 +387,7 @@ function AddRow({
           className="btn-secondary px-3 py-[7px] text-[12px] rounded-[9px] whitespace-nowrap inline-flex items-center gap-1.5"
         >
           {busy ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-          Add
+          {t("Add")}
         </button>
       </div>
 
@@ -389,7 +398,7 @@ function AddRow({
           onClick={onAddFile}
           className="btn-ghost px-3 py-[7px] text-[12px] rounded-[9px]"
         >
-          Add .crx / .zip…
+          {t("Add .crx / .zip…")}
         </button>
         <button
           type="button"
@@ -397,7 +406,7 @@ function AddRow({
           onClick={onAddFolder}
           className="btn-ghost px-3 py-[7px] text-[12px] rounded-[9px]"
         >
-          Add folder…
+          {t("Add folder…")}
         </button>
       </div>
     </>
@@ -411,6 +420,7 @@ function CatalogToggle({
   open: boolean;
   onToggle: () => void;
 }): JSX.Element {
+  const { t } = useI18n();
   return (
     <button
       type="button"
@@ -418,7 +428,7 @@ function CatalogToggle({
       className="btn-ghost px-3 py-[7px] text-[12px] rounded-[9px] inline-flex items-center gap-1.5"
     >
       <LayoutGrid size={12} />
-      {open ? "Hide catalog" : "Browse catalog"}
+      {open ? t("Hide catalog") : t("Browse catalog")}
     </button>
   );
 }

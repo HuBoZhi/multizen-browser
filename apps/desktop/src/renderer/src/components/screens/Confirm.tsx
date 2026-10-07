@@ -1,4 +1,5 @@
 import { useEffect, useState, type JSX, type ReactNode } from "react";
+import { useI18n } from "../../lib/i18n";
 import { Kbd } from "../atoms";
 
 interface ConfirmProps {
@@ -12,6 +13,7 @@ interface ConfirmProps {
 }
 
 export function Confirm(props: ConfirmProps): JSX.Element | null {
+  const { t } = useI18n();
   useEffect(() => {
     if (!props.open) return;
     const onKey = (e: KeyboardEvent): void => {
@@ -36,21 +38,21 @@ export function Confirm(props: ConfirmProps): JSX.Element | null {
         style={{
           width: 420,
           borderRadius: 16,
-          background: "rgba(15,16,22,0.92)",
+          background: "rgba(23,23,23,0.92)",
           boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17), 0 30px 80px rgba(0,0,0,0.6)",
           padding: 22,
           animation: "mz-slide-up 140ms cubic-bezier(0.2,0.8,0.2,1)",
         }}
       >
-        <div className="text-[15px] font-bold text-slate-100">{props.title}</div>
-        <div className="text-[12.5px] text-slate-400 mt-2 leading-relaxed">{props.description}</div>
+        <div className="text-[15px] font-bold text-neutral-100">{props.title}</div>
+        <div className="text-[12.5px] text-neutral-400 mt-2 leading-relaxed">{props.description}</div>
         <div className="flex items-center gap-2 mt-5 justify-end">
           <button
             type="button"
             className="btn-ghost px-3 py-[7px] text-[12px] rounded-[9px]"
             onClick={props.onCancel}
           >
-            Cancel
+            {t("Cancel")}
             <Kbd>esc</Kbd>
           </button>
           <button
@@ -67,7 +69,7 @@ export function Confirm(props: ConfirmProps): JSX.Element | null {
             }
             onClick={props.onConfirm}
           >
-            {props.confirmLabel ?? "Confirm"}
+            {props.confirmLabel ?? t("Confirm")}
             <Kbd variant={props.destructive ? "default" : "on-brand"}>⏎</Kbd>
           </button>
         </div>
@@ -89,6 +91,7 @@ interface PromptProps {
 }
 
 export function Prompt(props: PromptProps): JSX.Element | null {
+  const { t } = useI18n();
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -119,17 +122,17 @@ export function Prompt(props: PromptProps): JSX.Element | null {
         style={{
           width: 460,
           borderRadius: 16,
-          background: "rgba(15,16,22,0.92)",
+          background: "rgba(23,23,23,0.92)",
           boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17), 0 30px 80px rgba(0,0,0,0.6)",
           padding: 22,
           animation: "mz-slide-up 140ms cubic-bezier(0.2,0.8,0.2,1)",
         }}
       >
-        <div className="text-[15px] font-bold text-slate-100">{props.title}</div>
+        <div className="text-[15px] font-bold text-neutral-100">{props.title}</div>
         {props.description && (
-          <div className="text-[12.5px] text-slate-400 mt-2 leading-relaxed">{props.description}</div>
+          <div className="text-[12.5px] text-neutral-400 mt-2 leading-relaxed">{props.description}</div>
         )}
-        {props.label && <div className="text-[11px] font-medium text-slate-400 mt-4 mb-1.5">{props.label}</div>}
+        {props.label && <div className="text-[11px] font-medium text-neutral-400 mt-4 mb-1.5">{props.label}</div>}
         <input
           autoFocus
           type={props.inputType ?? "text"}
@@ -140,7 +143,7 @@ export function Prompt(props: PromptProps): JSX.Element | null {
             if (e.key === "Enter" && !busy) void submit();
             if (e.key === "Escape") props.onCancel();
           }}
-          className="w-full mono text-[13px] text-slate-100 px-3 py-2.5 rounded-[10px] outline-none"
+          className="w-full mono text-[13px] text-neutral-100 px-3 py-2.5 rounded-[10px] outline-none"
           style={{
             background: "rgba(255,255,255,0.06)",
             boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)",
@@ -150,7 +153,7 @@ export function Prompt(props: PromptProps): JSX.Element | null {
         />
         <div className="flex items-center gap-2 mt-5 justify-end">
           <button type="button" className="btn-ghost px-3 py-[7px] text-[12px] rounded-[9px]" onClick={props.onCancel}>
-            Cancel
+            {t("Cancel")}
           </button>
           <button
             type="button"
@@ -158,7 +161,7 @@ export function Prompt(props: PromptProps): JSX.Element | null {
             onClick={submit}
             className="btn-brand px-3 py-[7px] text-[12px] rounded-[9px]"
           >
-            {busy ? "…" : (props.confirmLabel ?? "Submit")}
+            {busy ? "…" : (props.confirmLabel ?? t("Submit"))}
           </button>
         </div>
       </div>

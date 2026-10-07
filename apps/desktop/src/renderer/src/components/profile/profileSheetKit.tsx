@@ -1,5 +1,6 @@
 import { Blocks, Fingerprint, Globe, IdCard, Network, type LucideIcon } from "lucide-react";
 import type { JSX, ReactNode } from "react";
+import { useI18n } from "../../lib/i18n";
 
 /**
  * Shared building blocks for the create + edit profile sheets so both wear the
@@ -33,6 +34,7 @@ export function SectionRail({
   /** Optional bottom slot, pinned under the list (e.g. the autosave status pill). */
   footer?: ReactNode;
 }): JSX.Element {
+  const { t } = useI18n();
   return (
     <nav
       className="flex flex-col shrink-0 py-3 px-2 gap-0.5 overflow-y-auto min-h-0"
@@ -47,13 +49,13 @@ export function SectionRail({
             onClick={() => onSelect(id)}
             className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] text-left transition-colors"
             style={{
-              background: active ? "rgba(168,85,247,0.14)" : "transparent",
-              color: active ? "#e9d5ff" : "#94a3b8",
-              boxShadow: active ? "inset 0 0 0 1px rgba(168,85,247,0.22)" : undefined,
+              background: active ? "rgba(255,255,255,0.14)" : "transparent",
+              color: active ? "#f5f5f5" : "#a3a3a3",
+              boxShadow: active ? "inset 0 0 0 1px rgba(255,255,255,0.22)" : undefined,
             }}
           >
             <Icon size={15} strokeWidth={1.75} className="shrink-0" />
-            <span className="font-medium flex-1">{label}</span>
+            <span className="font-medium flex-1">{t(label)}</span>
             {badges?.[id] && (
               <span
                 className="w-1.5 h-1.5 rounded-full shrink-0"
@@ -73,7 +75,7 @@ export function SectionRail({
 export function Field({ label, children }: { label: string; children: ReactNode }): JSX.Element {
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="text-[11px] font-medium text-slate-400">{label}</div>
+      <div className="text-[11px] font-medium text-neutral-400">{label}</div>
       {children}
     </div>
   );
@@ -112,7 +114,7 @@ export function Input({
           : undefined
       }
       placeholder={placeholder}
-      className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 placeholder:text-slate-400 outline-none focus:bg-white/[0.05] transition-colors"
+      className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-neutral-200 placeholder:text-neutral-400 outline-none focus:bg-white/[0.05] transition-colors"
       style={{
         boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)",
         fontFamily: mono ? "var(--font-mono)" : "var(--font-sans)",
@@ -139,7 +141,7 @@ export function Textarea({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
-      className="w-full px-2.5 py-2 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 placeholder:text-slate-400 outline-none focus:bg-white/[0.05] transition-colors resize-none"
+      className="w-full px-2.5 py-2 rounded-lg bg-white/[0.03] text-[12px] text-neutral-200 placeholder:text-neutral-400 outline-none focus:bg-white/[0.05] transition-colors resize-none"
       style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)", fontFamily: "var(--font-sans)" }}
     />
   );

@@ -7,6 +7,7 @@ import { ExtensionsSection } from "./ExtensionsSection";
 import { EmojiField } from "./EmojiField";
 import { BrowserSection } from "./BrowserSection";
 import { parseProxyString } from "../../lib/parseProxy";
+import { useI18n } from "../../lib/i18n";
 import {
   Field,
   Input,
@@ -104,6 +105,7 @@ interface Props {
 }
 
 export function ProfileEditSheet({ profile, onSaved }: Props): JSX.Element {
+  const { t } = useI18n();
   const [section, setSection] = useState<SectionId>("general");
   const [form, setForm] = useState<FormState>(() => toForm(profile));
   const [status, setStatus] = useState<SaveStatus>({ kind: "saved" });
@@ -203,7 +205,7 @@ export function ProfileEditSheet({ profile, onSaved }: Props): JSX.Element {
         {section === "general" && (
           <div className="space-y-3">
             <div className="flex gap-2.5 items-end">
-              <Field label="Icon">
+              <Field label={t("Icon")}>
                 <EmojiField
                   value={form.icon}
                   onChange={(v) => update("icon", v)}
@@ -213,19 +215,19 @@ export function ProfileEditSheet({ profile, onSaved }: Props): JSX.Element {
                 />
               </Field>
               <div className="grid grid-cols-2 gap-2.5 flex-1 min-w-0">
-                <Field label="Name">
+                <Field label={t("Name")}>
                   <Input autoFocusHint value={form.name} onChange={(v) => update("name", v)} />
                 </Field>
-                <Field label="Tags">
+                <Field label={t("Tags")}>
                   <Input
                     value={form.tagsRaw}
                     onChange={(v) => update("tagsRaw", v)}
-                    placeholder="comma-separated"
+                    placeholder={t("comma-separated")}
                   />
                 </Field>
               </div>
             </div>
-            <Field label="Notes">
+            <Field label={t("Notes")}>
               <Textarea value={form.notes} onChange={(v) => update("notes", v)} rows={3} />
             </Field>
           </div>
@@ -235,21 +237,23 @@ export function ProfileEditSheet({ profile, onSaved }: Props): JSX.Element {
           <div className="space-y-4">
             <BrowserSection startUrl={form.startUrl} onStartUrl={(v) => update("startUrl", v)} />
             <label
-              className="flex items-start gap-2 text-[12px] text-slate-300 cursor-pointer"
-              title="Every launch runs on a fresh copy of this profile's data; the copy is deleted when the browser closes. The profile itself stays untouched — use this to run the same identity in parallel without ever writing back."
+              className="flex items-start gap-2 text-[12px] text-neutral-300 cursor-pointer"
+              title={t(
+                "Every launch runs on a fresh copy of this profile's data; the copy is deleted when the browser closes. The profile itself stays untouched — use this to run the same identity in parallel without ever writing back.",
+              )}
             >
               <input
                 type="checkbox"
                 checked={form.ephemeral}
                 onChange={(e) => update("ephemeral", e.target.checked)}
-                className="w-3.5 h-3.5 mt-0.5 rounded accent-purple-500"
+                className="w-3.5 h-3.5 mt-0.5 rounded accent-neutral-300"
               />
               <span>
-                Ephemeral runs (working-copy mode)
-                <span className="block text-[10px] text-slate-400 leading-relaxed mt-0.5">
-                  Launch on a disposable copy — cookies/logins carry over, changes are discarded
-                  when the browser closes. The profile becomes a read-only template, safe to run
-                  the same identity in parallel across instances.
+                {t("Ephemeral runs (working-copy mode)")}
+                <span className="block text-[10px] text-neutral-400 leading-relaxed mt-0.5">
+                  {t(
+                    "Launch on a disposable copy — cookies/logins carry over, changes are discarded when the browser closes. The profile becomes a read-only template, safe to run the same identity in parallel across instances.",
+                  )}
                 </span>
               </span>
             </label>
@@ -258,30 +262,30 @@ export function ProfileEditSheet({ profile, onSaved }: Props): JSX.Element {
 
         {section === "proxy" && (
           <div>
-            <label className="flex items-center gap-2 text-[12px] text-slate-300 cursor-pointer mb-2.5">
+            <label className="flex items-center gap-2 text-[12px] text-neutral-300 cursor-pointer mb-2.5">
               <input
                 type="checkbox"
                 checked={form.proxyEnabled}
                 onChange={(e) => update("proxyEnabled", e.target.checked)}
-                className="w-3.5 h-3.5 rounded accent-purple-500"
+                className="w-3.5 h-3.5 rounded accent-neutral-300"
               />
-              Use proxy
+              {t("Use proxy")}
             </label>
             {form.proxyEnabled && (
               <div className="space-y-2.5">
                 <div className="grid grid-cols-[110px_1fr_90px] gap-2.5">
-                  <Field label="Type">
+                  <Field label={t("Type")}>
                     <select
                       value={form.proxyType}
                       onChange={(e) => update("proxyType", e.target.value as "http" | "socks5")}
-                      className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 outline-none"
+                      className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-neutral-200 outline-none"
                       style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)" }}
                     >
-                      <option value="http">HTTP</option>
-                      <option value="socks5">SOCKS5</option>
+                      <option value="http">{t("HTTP")}</option>
+                      <option value="socks5">{t("SOCKS5")}</option>
                     </select>
                   </Field>
-                  <Field label="Host">
+                  <Field label={t("Host")}>
                     <Input
                       value={form.proxyHost}
                       onChange={(v) => update("proxyHost", v)}
@@ -298,11 +302,11 @@ export function ProfileEditSheet({ profile, onSaved }: Props): JSX.Element {
                         }));
                         return true;
                       }}
-                      placeholder="host or host:port:user:pass"
+                      placeholder={t("host or host:port:user:pass")}
                       mono
                     />
                   </Field>
-                  <Field label="Port">
+                  <Field label={t("Port")}>
                     <Input
                       value={form.proxyPort}
                       onChange={(v) => update("proxyPort", v)}
@@ -312,14 +316,14 @@ export function ProfileEditSheet({ profile, onSaved }: Props): JSX.Element {
                   </Field>
                 </div>
                 <div className="grid grid-cols-2 gap-2.5">
-                  <Field label="Username">
+                  <Field label={t("Username")}>
                     <Input
                       value={form.proxyUsername}
                       onChange={(v) => update("proxyUsername", v)}
                       mono
                     />
                   </Field>
-                  <Field label="Password">
+                  <Field label={t("Password")}>
                     <Input
                       type="password"
                       value={form.proxyPassword}
@@ -349,10 +353,11 @@ export function ProfileEditSheet({ profile, onSaved }: Props): JSX.Element {
 }
 
 function StatusPill({ status }: { status: SaveStatus }): JSX.Element {
+  const { t } = useI18n();
   if (status.kind === "saving") {
     return (
-      <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-        <Loader2 size={11} className="animate-spin" /> Saving…
+      <div className="flex items-center gap-1.5 text-[11px] text-neutral-400">
+        <Loader2 size={11} className="animate-spin" /> {t("Saving…")}
       </div>
     );
   }
@@ -360,13 +365,13 @@ function StatusPill({ status }: { status: SaveStatus }): JSX.Element {
     return (
       <div className="flex items-start gap-1.5 text-[11px] text-amber-400/90 leading-snug">
         <TriangleAlert size={11} className="shrink-0 mt-[1px]" />
-        <span>{status.message}</span>
+        <span>{t(status.message)}</span>
       </div>
     );
   }
   return (
-    <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-      <Check size={11} className="text-emerald-400/80" /> All changes saved
+    <div className="flex items-center gap-1.5 text-[11px] text-neutral-400">
+      <Check size={11} className="text-emerald-400/80" /> {t("All changes saved")}
     </div>
   );
 }

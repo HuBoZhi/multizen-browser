@@ -1,6 +1,7 @@
 import { useEffect, useState, type JSX, type ReactNode } from "react";
 import { Download, RefreshCw, X } from "lucide-react";
 import type { UpdateStatus } from "../types";
+import { useI18n } from "../lib/i18n";
 
 /**
  * Full-width, non-intrusive update bar shown under the TopBar. Only renders for
@@ -16,6 +17,7 @@ import type { UpdateStatus } from "../types";
  * modal is up, so the two never compete.
  */
 export function UpdateBanner({ suppressed }: { suppressed?: boolean }): JSX.Element | null {
+  const { t } = useI18n();
   const [status, setStatus] = useState<UpdateStatus | null>(null);
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
 
@@ -34,9 +36,9 @@ export function UpdateBanner({ suppressed }: { suppressed?: boolean }): JSX.Elem
   if (status.kind === "downloading") {
     return (
       <Bar tone="info">
-        <RefreshCw size={13} className="animate-spin text-purple-300 shrink-0" />
-        <span>Downloading MultiZen {version}…</span>
-        <span className="mono text-[11px] text-slate-400">{status.percent}%</span>
+        <RefreshCw size={13} className="animate-spin text-neutral-200 shrink-0" />
+        <span>{t("Downloading MultiZen {version}…", { version })}</span>
+        <span className="mono text-[11px] text-neutral-400">{status.percent}%</span>
         <div className="flex-1" />
       </Bar>
     );
@@ -45,15 +47,15 @@ export function UpdateBanner({ suppressed }: { suppressed?: boolean }): JSX.Elem
   if (status.kind === "ready") {
     return (
       <Bar tone="brand">
-        <Download size={13} className="text-purple-200 shrink-0" />
+        <Download size={13} className="text-neutral-100 shrink-0" />
         <span>
-          MultiZen <b className="font-semibold">{version}</b> is ready to install.
+          MultiZen <b className="font-semibold">{version}</b> {t("is ready to install.")}
         </span>
         <div className="flex-1" />
         <BannerButton primary onClick={() => void window.multizen.update.install()}>
-          Restart now
+          {t("Restart now")}
         </BannerButton>
-        <BannerButton onClick={() => setDismissedKey(key)}>Later</BannerButton>
+        <BannerButton onClick={() => setDismissedKey(key)}>{t("Later")}</BannerButton>
       </Bar>
     );
   }
@@ -62,15 +64,15 @@ export function UpdateBanner({ suppressed }: { suppressed?: boolean }): JSX.Elem
     // macOS-only terminal state (no in-app install possible).
     return (
       <Bar tone="brand">
-        <Download size={13} className="text-purple-200 shrink-0" />
+        <Download size={13} className="text-neutral-100 shrink-0" />
         <span>
-          MultiZen <b className="font-semibold">{version}</b> is available.
+          MultiZen <b className="font-semibold">{version}</b> {t("is available.")}
         </span>
         <div className="flex-1" />
         <BannerButton primary onClick={() => void window.multizen.update.download(version)}>
-          Download
+          {t("Download")}
         </BannerButton>
-        <BannerButton aria-label="Dismiss" onClick={() => setDismissedKey(key)}>
+        <BannerButton aria-label={t("Dismiss")} onClick={() => setDismissedKey(key)}>
           <X size={13} />
         </BannerButton>
       </Bar>
@@ -83,12 +85,12 @@ export function UpdateBanner({ suppressed }: { suppressed?: boolean }): JSX.Elem
 function Bar({ children, tone }: { children: ReactNode; tone: "brand" | "info" }): JSX.Element {
   return (
     <div
-      className="flex items-center gap-2.5 px-4 py-2 text-[12px] text-slate-200"
+      className="flex items-center gap-2.5 px-4 py-2 text-[12px] text-neutral-200"
       style={{
         background:
           tone === "brand"
-            ? "linear-gradient(90deg, rgba(99,102,241,0.16), rgba(168,85,247,0.14), rgba(236,72,153,0.12))"
-            : "rgba(15,16,22,0.95)",
+            ? "linear-gradient(90deg, rgba(163,163,163,0.16), rgba(255,255,255,0.14), rgba(236,72,153,0.12))"
+            : "rgba(23,23,23,0.95)",
         boxShadow: "inset 0 -1px 0 0 rgba(255,255,255,0.08)",
       }}
     >
@@ -114,11 +116,11 @@ function BannerButton({
       className={
         primary
           ? "px-2.5 h-7 rounded-md text-[12px] font-medium text-white"
-          : "px-2 h-7 rounded-md text-[12px] text-slate-300 hover:text-slate-100"
+          : "px-2 h-7 rounded-md text-[12px] text-neutral-300 hover:text-neutral-100"
       }
       style={
         primary
-          ? { background: "linear-gradient(90deg, #6366f1, #a855f7)" }
+          ? { background: "linear-gradient(90deg, #f5f5f5, #e5e5e5)" }
           : { boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.19)" }
       }
       {...rest}

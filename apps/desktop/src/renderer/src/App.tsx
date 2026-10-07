@@ -16,6 +16,7 @@ import { ChromiumBootstrapModal } from "./components/onboarding/ChromiumBootstra
 import { UpdateBanner } from "./components/UpdateBanner";
 import { Modal, ConfirmHost, confirm } from "./components/atoms";
 import { readPersisted, usePersistedState, writePersisted } from "./lib/persisted";
+import { useI18n } from "./lib/i18n";
 import type { ActivityEvent, ChromiumStatus, ProfileSummary, RunInfo, SystemInfo } from "./types";
 
 type ModalState =
@@ -25,6 +26,7 @@ type ModalState =
   | { kind: "delete-confirm"; profileId: string };
 
 export function App(): JSX.Element {
+  const { t } = useI18n();
   // Persisted UI state — survives app restarts under localStorage `multizen.ui.*`.
   const [section, setSection] = usePersistedState<Section>("section", "profiles");
   const [drawerOpen, setDrawerOpen] = usePersistedState<boolean>("drawerOpen", false);
@@ -67,11 +69,11 @@ export function App(): JSX.Element {
     return window.multizen.extensions.onInstalled((e) => {
       showToast(
         e.ok
-          ? `Added "${e.extension.name}" — relaunch the profile to apply`
-          : `Extension install failed: ${e.error}`,
+          ? t('Added "{name}" — relaunch the profile to apply', { name: e.extension.name })
+          : t("Extension install failed: {error}", { error: e.error }),
       );
     });
-  }, []);
+  }, [t]);
   // Last-interacted profile id — only used by the command palette's
   // "Export" action, which exports whichever profile the user most
   // recently opened in the edit modal.
@@ -247,7 +249,7 @@ export function App(): JSX.Element {
     try {
       await window.multizen.profiles.launch(id);
     } catch (e) {
-      showToast(`Launch failed: ${(e as Error).message}`);
+      showToast(t("Launch failed: {message}", { message: (e as Error).message }));
     }
     await refresh();
   }
@@ -258,9 +260,9 @@ export function App(): JSX.Element {
   async function duplicateProfile(id: string): Promise<void> {
     try {
       const copy = await window.multizen.profiles.duplicate(id);
-      showToast(`Duplicated as "${copy.name}"`);
+      showToast(t('Duplicated as "{name}"', { name: copy.name }));
     } catch (e) {
-      showToast(`Duplicate failed: ${(e as Error).message}`);
+      showToast(t("Duplicate failed: {message}", { message: (e as Error).message }));
     }
     await refresh();
   }
@@ -288,7 +290,7 @@ export function App(): JSX.Element {
       const { pngBase64 } = await window.multizen.runs.screenshot(run.runId);
       setShot({ label: `${run.profileName ?? run.profileId} · :${run.mcpPort}`, pngBase64 });
     } catch (e) {
-      showToast(`Screenshot failed: ${(e as Error).message}`);
+      showToast(t("Screenshot failed: {message}", { message: (e as Error).message }));
     }
   }
 
@@ -308,7 +310,8 @@ export function App(): JSX.Element {
     setModal({ kind: "none" });
     const result = await window.multizen.profiles.importArchive(passphrase);
     if (!result.ok) {
-      if (result.reason !== "cancelled") showToast(`Import failed: ${result.reason}`);
+      if (result.reason !== "cancelled")
+        showToast(t("Import failed: {reason}", { reason: String(result.reason) }));
       return;
     }
     await refresh();
@@ -317,15 +320,15 @@ export function App(): JSX.Element {
   async function exportProfile(profileId: string, passphrase: string): Promise<void> {
     setModal({ kind: "none" });
     if (passphrase.length < 8) {
-      showToast("Passphrase must be at least 8 characters");
+      showToast(t("Passphrase must be at least 8 characters"));
       return;
     }
     const result = await window.multizen.profiles.exportArchive(profileId, passphrase);
     if (result.ok) {
-      const file = result.path.split("/").slice(-1)[0];
-      showToast(`Exported to ${file}`);
+      const file = result.path.split("/").slice(-1)[0] ?? result.path;
+      showToast(t("Exported to {file}", { file }));
     } else if (result.reason !== "cancelled") {
-      showToast(`Export failed: ${result.reason}`);
+      showToast(t("Export failed: {reason}", { reason: result.reason }));
     }
   }
 
@@ -390,7 +393,8 @@ export function App(): JSX.Element {
               className="m-6 px-4 py-3 rounded-lg text-sm text-red-300"
               style={{ background: "rgba(239,68,68,0.06)", boxShadow: "inset 0 0 0 1px rgba(239,68,68,0.25)" }}
             >
-              Preload bridge missing — <code>window.multizen</code> is undefined. Open DevTools for details.
+              {t("Preload bridge missing —")} <code>window.multizen</code>{" "}
+              {t("is undefined. Open DevTools for details.")}
             </div>
           )}
 
@@ -398,8 +402,8 @@ export function App(): JSX.Element {
             <>
               <Modal
                 open={showSheet}
-                title="New profile"
-                subtitle="Cookies, login state, and fingerprint live in this profile only."
+                title={t("New profile")}
+                subtitle={t("Cookies, login state, and fingerprint live in this profile only.")}
                 width={720}
                 onClose={() => {
                   setShowSheet(false);
@@ -408,9 +412,11 @@ export function App(): JSX.Element {
                 confirmClose={async () => {
                   if (!sheetDirty) return true;
                   return confirm({
-                    title: "Discard your changes?",
-                    body: "You haven't created the profile yet. Closing will lose what you've entered.",
-                    confirmLabel: "Discard",
+                    title: t("Discard your changes?"),
+                    body: t(
+                      "You haven't created the profile yet. Closing will lose what you've entered.",
+                    ),
+                    confirmLabel: t("Discard"),
                     destructive: true,
                   });
                 }}
@@ -475,8 +481,8 @@ export function App(): JSX.Element {
           on close. */}
       <Modal
         open={editingProfile !== null}
-        title={editingProfile ? `Edit ${editingProfile.name}` : "Edit profile"}
-        subtitle="Changes autosave and apply on the next profile launch."
+        title={editingProfile ? t("Edit {name}", { name: editingProfile.name }) : t("Edit profile")}
+        subtitle={t("Changes autosave and apply on the next profile launch.")}
         width={720}
         onClose={() => {
           setEditingProfile(null);
@@ -490,8 +496,10 @@ export function App(): JSX.Element {
 
       <Modal
         open={shot !== null}
-        title={`Screenshot — ${shot?.label ?? ""}`}
-        subtitle="Captured from inside the browser via CDP — page content only, never the desktop."
+        title={t("Screenshot — {label}", { label: shot?.label ?? "" })}
+        subtitle={t(
+          "Captured from inside the browser via CDP — page content only, never the desktop.",
+        )}
         width={860}
         onClose={() => setShot(null)}
         footer={
@@ -510,14 +518,14 @@ export function App(): JSX.Element {
                     .catch(() => {});
                 }}
               >
-                Copy image
+                {t("Copy image")}
               </button>
               <a
                 className="mz-button mz-button-primary"
                 download={`multizen-${shot.label.replace(/[^a-z0-9-]+/gi, "-")}-${Date.now()}.png`}
                 href={`data:image/png;base64,${shot.pngBase64}`}
               >
-                Save PNG
+                {t("Save PNG")}
               </a>
             </div>
           )
@@ -525,7 +533,11 @@ export function App(): JSX.Element {
       >
         {shot && (
           <div className="overflow-auto rounded-xl" style={{ maxHeight: "58vh", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17)" }}>
-            <img src={`data:image/png;base64,${shot.pngBase64}`} alt="Browser page screenshot" className="w-full block" />
+            <img
+              src={`data:image/png;base64,${shot.pngBase64}`}
+              alt={t("Browser page screenshot")}
+              className="w-full block"
+            />
           </div>
         )}
       </Modal>
@@ -553,24 +565,26 @@ export function App(): JSX.Element {
 
       <Prompt
         open={modal.kind === "import-passphrase"}
-        title="Import profile archive"
-        description="Choose a .mzar file. Provide the passphrase used at export time."
-        label="Passphrase"
+        title={t("Import profile archive")}
+        description={t("Choose a .mzar file. Provide the passphrase used at export time.")}
+        label={t("Passphrase")}
         inputType="password"
-        placeholder="Passphrase"
-        confirmLabel="Choose file & import"
+        placeholder={t("Passphrase")}
+        confirmLabel={t("Choose file & import")}
         onSubmit={importProfile}
         onCancel={() => setModal({ kind: "none" })}
       />
 
       <Prompt
         open={modal.kind === "export-passphrase"}
-        title="Export profile archive"
-        description="Choose a passphrase to encrypt the archive. You'll need it to import this profile elsewhere. Minimum 8 characters."
-        label="New passphrase"
+        title={t("Export profile archive")}
+        description={t(
+          "Choose a passphrase to encrypt the archive. You'll need it to import this profile elsewhere. Minimum 8 characters.",
+        )}
+        label={t("New passphrase")}
         inputType="password"
-        placeholder="At least 8 characters"
-        confirmLabel="Encrypt & save…"
+        placeholder={t("At least 8 characters")}
+        confirmLabel={t("Encrypt & save…")}
         onSubmit={(p) => {
           if (modal.kind === "export-passphrase") {
             return exportProfile(modal.profileId, p);
@@ -582,9 +596,11 @@ export function App(): JSX.Element {
 
       <Confirm
         open={modal.kind === "delete-confirm"}
-        title="Delete this profile?"
-        description="Cookies, login state, and on-disk data will be erased permanently. This cannot be undone."
-        confirmLabel="Yes, delete"
+        title={t("Delete this profile?")}
+        description={t(
+          "Cookies, login state, and on-disk data will be erased permanently. This cannot be undone.",
+        )}
+        confirmLabel={t("Yes, delete")}
         destructive
         onConfirm={() => {
           if (modal.kind === "delete-confirm") void deleteProfile(modal.profileId);
@@ -597,7 +613,7 @@ export function App(): JSX.Element {
           className="fixed right-6 px-4 py-3 rounded-lg text-sm"
           style={{
             bottom: 56,
-            background: "rgba(15,16,22,0.92)",
+            background: "rgba(23,23,23,0.92)",
             boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15), 0 20px 60px rgba(0,0,0,0.5)",
             backdropFilter: "blur(20px)",
             animation: "mz-slide-up 200ms ease-out",

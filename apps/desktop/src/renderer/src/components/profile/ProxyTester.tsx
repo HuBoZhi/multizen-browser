@@ -2,6 +2,7 @@ import { useState, type JSX } from "react";
 import { AlertTriangle, CheckCircle2, Globe2, Loader2 } from "lucide-react";
 import { Flag } from "../atoms";
 import type { ProxyConfig, ProxyGeoResult } from "../../types";
+import { useI18n } from "../../lib/i18n";
 
 /**
  * Test-proxy affordance — shared between create and edit forms.
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export function ProxyTester({ proxy, profileId, onProbed }: Props): JSX.Element | null {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ProxyGeoResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,14 +54,14 @@ export function ProxyTester({ proxy, profileId, onProbed }: Props): JSX.Element 
         type="button"
         onClick={() => void test()}
         disabled={busy}
-        className="inline-flex items-center gap-1.5 text-[11px] text-purple-300 hover:text-purple-200 transition-colors px-3 py-1.5 rounded-lg disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 text-[11px] text-neutral-200 hover:text-neutral-100 transition-colors px-3 py-1.5 rounded-lg disabled:opacity-50"
         style={{
-          background: "rgba(168,85,247,0.08)",
-          boxShadow: "inset 0 0 0 1px rgba(168,85,247,0.25)",
+          background: "rgba(255,255,255,0.08)",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.25)",
         }}
       >
         {busy ? <Loader2 size={11} className="animate-spin" /> : <Globe2 size={11} />}
-        {busy ? "Testing…" : "Test proxy"}
+        {busy ? t("Testing…") : t("Test proxy")}
       </button>
 
       {result && <ResultCard result={result} />}
@@ -69,6 +71,7 @@ export function ProxyTester({ proxy, profileId, onProbed }: Props): JSX.Element 
 }
 
 function ResultCard({ result }: { result: ProxyGeoResult }): JSX.Element {
+  const { t } = useI18n();
   return (
     <div
       className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg"
@@ -89,7 +92,7 @@ function ResultCard({ result }: { result: ProxyGeoResult }): JSX.Element {
             <span
               className="ml-auto flex-shrink-0 text-[10px] mono"
               style={{ color: latencyColor(result.latencyMs) }}
-              title="Round-trip of the test request through the proxy"
+              title={t("Round-trip of the test request through the proxy")}
             >
               {result.latencyMs} ms
             </span>

@@ -7,6 +7,7 @@ import {
   DownloadCloud,
   Eye,
   EyeOff,
+  Globe,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import { Pill } from "../atoms";
 import { relativeTime } from "../../lib/relativeTime";
+import { useI18n, type TFunc } from "../../lib/i18n";
 import type {
   AppSettings,
   ChromiumStatus,
@@ -27,6 +29,7 @@ interface Props {
 }
 
 export function Settings({ onImport }: Props): JSX.Element {
+  const { t, lang, setLang } = useI18n();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [info, setInfo] = useState<SystemInfo | null>(null);
   const [copied, setCopied] = useState(false);
@@ -93,7 +96,7 @@ export function Settings({ onImport }: Props): JSX.Element {
   if (!settings) {
     return (
       <div className="flex-1 overflow-auto p-8">
-        <div className="max-w-[720px] mx-auto text-[13px] text-slate-400">Loading…</div>
+        <div className="max-w-[720px] mx-auto text-[13px] text-neutral-400">{t("Loading…")}</div>
       </div>
     );
   }
@@ -101,20 +104,57 @@ export function Settings({ onImport }: Props): JSX.Element {
   return (
     <div className="flex-1 overflow-auto" style={{ padding: "24px 32px" }}>
       <div className="max-w-[720px] mx-auto">
-        <div className="text-lg font-bold tracking-tight text-slate-100 mb-1.5">Settings</div>
-        <div className="text-[13px] text-slate-400 mb-5">
-          MCP server, archives, build info. Configuration is local — MultiZen does not call any
-          external API on your behalf.
+        <div className="text-lg font-bold tracking-tight text-neutral-100 mb-1.5">{t("Settings")}</div>
+        <div className="text-[13px] text-neutral-400 mb-5">
+          {t(
+            "MCP server, archives, build info. Configuration is local — MultiZen does not call any external API on your behalf.",
+          )}
         </div>
 
         <Row
+          icon={<Globe size={16} strokeWidth={1.5} />}
+          title={t("Language")}
+          desc={t("Display language for the MultiZen interface. Applies immediately.")}
+        >
+          <div className="flex gap-2">
+            {(
+              [
+                { code: "en", label: "English" },
+                { code: "zh", label: "简体中文" },
+              ] as Array<{ code: typeof lang; label: string }>
+            ).map((option) => {
+              const selected = lang === option.code;
+              return (
+                <button
+                  key={option.code}
+                  type="button"
+                  onClick={() => setLang(option.code)}
+                  className="text-left px-4 py-2 rounded-lg transition-colors text-[13px] font-medium"
+                  style={{
+                    boxShadow: selected
+                      ? "inset 0 0 0 1px rgba(255,255,255,0.45)"
+                      : "inset 0 0 0 1px rgba(255,255,255,0.07)",
+                    background: selected ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)",
+                    color: selected ? "#e5e5e5" : "#a3a3a3",
+                  }}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </Row>
+
+        <Row
           icon={<Zap size={16} strokeWidth={1.5} />}
-          title="MCP server"
-          desc="Local HTTP transport that Cursor / Claude Desktop / Cline / any MCP client connects to. Requires the auth token below. The MCP tab has ready-to-paste client configs."
+          title={t("MCP server")}
+          desc={t(
+            "Local HTTP transport that Cursor / Claude Desktop / Cline / any MCP client connects to. Requires the auth token below. The MCP tab has ready-to-paste client configs.",
+          )}
         >
           <div className="flex gap-2 items-center flex-wrap">
             <Pill kind={info?.mcpHttpUrl ? "running" : "idle"} dot={!!info?.mcpHttpUrl}>
-              {info?.mcpHttpUrl ? `running on :${settings.mcpHttpPort}` : "off"}
+              {info?.mcpHttpUrl ? t("running on :{port}", { port: settings.mcpHttpPort }) : t("off")}
             </Pill>
 
             {info?.mcpHttpUrl && (
@@ -127,14 +167,14 @@ export function Settings({ onImport }: Props): JSX.Element {
                   boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.19)",
                 }}
               >
-                <span className="flex-1 mono text-[12px] text-slate-300 truncate">
+                <span className="flex-1 mono text-[12px] text-neutral-300 truncate">
                   {info.mcpHttpUrl}
                 </span>
                 <button
                   type="button"
                   onClick={copyMcpUrl}
-                  className="text-purple-400 hover:text-purple-300 transition-colors"
-                  aria-label="Copy URL"
+                  className="text-neutral-300 hover:text-neutral-200 transition-colors"
+                  aria-label={t("Copy URL")}
                 >
                   {copied ? <Check size={13} /> : <Copy size={13} />}
                 </button>
@@ -144,10 +184,10 @@ export function Settings({ onImport }: Props): JSX.Element {
 
           {info?.mcpAuthToken && (
             <div className="mt-2">
-              <div className="text-[11px] text-slate-400 mb-1">
-                Auth token — required. Send as{" "}
-                <span className="mono text-slate-400">Authorization: Bearer &lt;token&gt;</span>. Keep
-                it secret.
+              <div className="text-[11px] text-neutral-400 mb-1">
+                {t("Auth token — required. Send as")}{" "}
+                <span className="mono text-neutral-400">Authorization: Bearer &lt;token&gt;</span>.{" "}
+                {t("Keep it secret.")}
               </div>
               <div
                 className="flex items-center gap-2"
@@ -158,22 +198,22 @@ export function Settings({ onImport }: Props): JSX.Element {
                   boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.19)",
                 }}
               >
-                <span className="flex-1 mono text-[12px] text-slate-300 truncate">
+                <span className="flex-1 mono text-[12px] text-neutral-300 truncate">
                   {tokenShown ? info.mcpAuthToken : "•".repeat(24)}
                 </span>
                 <button
                   type="button"
                   onClick={() => setTokenShown((v) => !v)}
-                  className="text-slate-400 hover:text-slate-200 transition-colors"
-                  aria-label={tokenShown ? "Hide token" : "Reveal token"}
+                  className="text-neutral-400 hover:text-neutral-200 transition-colors"
+                  aria-label={tokenShown ? t("Hide token") : t("Reveal token")}
                 >
                   {tokenShown ? <EyeOff size={13} /> : <Eye size={13} />}
                 </button>
                 <button
                   type="button"
                   onClick={copyMcpToken}
-                  className="text-purple-400 hover:text-purple-300 transition-colors"
-                  aria-label="Copy token"
+                  className="text-neutral-300 hover:text-neutral-200 transition-colors"
+                  aria-label={t("Copy token")}
                 >
                   {tokenCopied ? <Check size={13} /> : <Copy size={13} />}
                 </button>
@@ -181,21 +221,21 @@ export function Settings({ onImport }: Props): JSX.Element {
             </div>
           )}
 
-          <label className="flex items-center gap-2.5 mt-3 text-[12px] text-slate-400 cursor-pointer">
+          <label className="flex items-center gap-2.5 mt-3 text-[12px] text-neutral-400 cursor-pointer">
             <input
               type="checkbox"
               checked={settings.mcpHttpEnabled}
               onChange={(e) => void patch({ mcpHttpEnabled: e.target.checked })}
-              className="w-3.5 h-3.5 rounded accent-purple-500"
+              className="w-3.5 h-3.5 rounded accent-neutral-300"
             />
-            Auto-start MCP HTTP transport on app launch
+            {t("Auto-start MCP HTTP transport on app launch")}
           </label>
         </Row>
 
         <Row
           icon={<Chrome size={16} strokeWidth={1.5} />}
-          title="Browser engine"
-          desc="Applied on next app launch."
+          title={t("Browser engine")}
+          desc={t("Applied on next app launch.")}
         >
           <div className="grid gap-2 sm:grid-cols-2">
             {engineOptions.map((option) => {
@@ -208,17 +248,17 @@ export function Settings({ onImport }: Props): JSX.Element {
                   className="text-left p-3 rounded-lg transition-colors"
                   style={{
                     boxShadow: selected
-                      ? "inset 0 0 0 1px rgba(168,85,247,0.45)"
+                      ? "inset 0 0 0 1px rgba(255,255,255,0.45)"
                       : "inset 0 0 0 1px rgba(255,255,255,0.07)",
-                    background: selected ? "rgba(168,85,247,0.08)" : "rgba(255,255,255,0.04)",
+                    background: selected ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)",
                   }}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[13px] font-medium text-slate-100">{option.label}</span>
-                    {selected && <Pill kind="running">active</Pill>}
+                    <span className="text-[13px] font-medium text-neutral-100">{option.label}</span>
+                    {selected && <Pill kind="running">{t("active")}</Pill>}
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-1 leading-relaxed">
-                    {option.description}
+                  <div className="text-[11px] text-neutral-400 mt-1 leading-relaxed">
+                    {t(option.description)}
                   </div>
                 </button>
               );
@@ -226,10 +266,10 @@ export function Settings({ onImport }: Props): JSX.Element {
           </div>
 
           <div className="mt-3 flex items-center gap-2.5 flex-wrap">
-            <span className="text-[12px] text-slate-400">
+            <span className="text-[12px] text-neutral-400">
               {chromiumStatus?.kind === "ready"
-                ? `Installed: v${chromiumStatus.version}`
-                : "Engine not downloaded yet"}
+                ? t("Installed: v{version}", { version: chromiumStatus.version })
+                : t("Engine not downloaded yet")}
             </span>
             <button
               type="button"
@@ -249,27 +289,29 @@ export function Settings({ onImport }: Props): JSX.Element {
                     : ""
                 }
               />
-              Check for updates
+              {t("Check for updates")}
             </button>
-            <span className="text-[12px] text-slate-400">
-              {engineUpdateLabel(engineUpdateStatus)}
+            <span className="text-[12px] text-neutral-400">
+              {engineUpdateLabel(engineUpdateStatus, t)}
             </span>
           </div>
-          <label className="flex items-center gap-2.5 mt-3 text-[12px] text-slate-400 cursor-pointer">
+          <label className="flex items-center gap-2.5 mt-3 text-[12px] text-neutral-400 cursor-pointer">
             <input
               type="checkbox"
               checked={settings.engineAutoUpdate}
               onChange={(e) => void patch({ engineAutoUpdate: e.target.checked })}
-              className="w-3.5 h-3.5 rounded accent-purple-500"
+              className="w-3.5 h-3.5 rounded accent-neutral-300"
             />
-            Automatically keep the browser engine up to date
+            {t("Automatically keep the browser engine up to date")}
           </label>
         </Row>
 
         <Row
           icon={<Boxes size={16} strokeWidth={1.5} />}
-          title="Archives"
-          desc=".mzar files are encrypted bundles of profiles — cookies, login state, fingerprints, notes — protected with a passphrase you set at export time."
+          title={t("Archives")}
+          desc={t(
+            ".mzar files are encrypted bundles of profiles — cookies, login state, fingerprints, notes — protected with a passphrase you set at export time.",
+          )}
         >
           <div className="flex gap-2">
             <button
@@ -277,7 +319,7 @@ export function Settings({ onImport }: Props): JSX.Element {
               className="btn-secondary px-3 py-[7px] text-[12px] rounded-[9px]"
               onClick={onImport}
             >
-              Import .mzar archive
+              {t("Import .mzar archive")}
             </button>
             <a
               href="https://github.com/multizenteam/multizen-browser#archives"
@@ -285,18 +327,20 @@ export function Settings({ onImport }: Props): JSX.Element {
               rel="noopener"
               className="btn-ghost px-3 py-[7px] text-[12px] rounded-[9px]"
             >
-              Read archive format docs
+              {t("Read archive format docs")}
             </a>
           </div>
         </Row>
 
         <Row
           icon={<DownloadCloud size={16} strokeWidth={1.5} />}
-          title="Updates"
+          title={t("Updates")}
           desc={
             info?.platform === "darwin"
-              ? "Auto-install isn't available on macOS yet — we'll notify you in-app to download the new version."
-              : "MultiZen checks for updates in the background and installs them on restart."
+              ? t(
+                  "Auto-install isn't available on macOS yet — we'll notify you in-app to download the new version.",
+                )
+              : t("MultiZen checks for updates in the background and installs them on restart.")
           }
         >
           <div className="flex items-center gap-2.5 flex-wrap">
@@ -310,49 +354,51 @@ export function Settings({ onImport }: Props): JSX.Element {
                 size={12}
                 className={updateStatus?.kind === "checking" ? "animate-spin" : ""}
               />
-              Check for updates
+              {t("Check for updates")}
             </button>
-            <span className="text-[12px] text-slate-400">{updateLabel(updateStatus)}</span>
+            <span className="text-[12px] text-neutral-400">{updateLabel(updateStatus, t)}</span>
           </div>
-          <div className="text-[11px] text-slate-400 mt-2">
-            Last checked: {lastChecked ? relativeTime(new Date(lastChecked).toISOString()) : "never"}
+          <div className="text-[11px] text-neutral-400 mt-2">
+            {t("Last checked: {time}", {
+              time: lastChecked ? relativeTime(new Date(lastChecked).toISOString()) : t("never"),
+            })}
           </div>
-          <label className="flex items-center gap-2.5 mt-3 text-[12px] text-slate-400 cursor-pointer">
+          <label className="flex items-center gap-2.5 mt-3 text-[12px] text-neutral-400 cursor-pointer">
             <input
               type="checkbox"
               checked={settings.autoUpdate}
               onChange={(e) => void patch({ autoUpdate: e.target.checked })}
-              className="w-3.5 h-3.5 rounded accent-purple-500"
+              className="w-3.5 h-3.5 rounded accent-neutral-300"
             />
-            Automatically check for updates
+            {t("Automatically check for updates")}
           </label>
         </Row>
 
         <Row
           icon={<ShieldCheck size={16} strokeWidth={1.5} />}
-          title="Anonymous usage"
-          desc="Off by default. Help gauge how many people run MultiZen."
+          title={t("Anonymous usage")}
+          desc={t("Off by default. Help gauge how many people run MultiZen.")}
         >
-          <label className="flex items-center gap-2.5 text-[12px] text-slate-400 cursor-pointer">
+          <label className="flex items-center gap-2.5 text-[12px] text-neutral-400 cursor-pointer">
             <input
               type="checkbox"
               checked={settings.usageReporting}
               onChange={(e) => void patch({ usageReporting: e.target.checked })}
-              className="w-3.5 h-3.5 rounded accent-purple-500"
+              className="w-3.5 h-3.5 rounded accent-neutral-300"
             />
-            Send an anonymous daily heartbeat
+            {t("Send an anonymous daily heartbeat")}
           </label>
-          <div className="text-[11px] text-slate-400 mt-2 leading-relaxed">
-            When on, sends once a day: app version, OS family, and a random
-            single-use token — <b>no</b> account, <b>no</b> persistent ID, and your IP is
-            never stored (a coarse country is derived server-side then discarded). No
-            profiles, proxies, or browsing are ever included. Set{" "}
-            <code className="text-slate-400">MULTIZEN_NO_TELEMETRY=1</code> to force it off.
+          <div className="text-[11px] text-neutral-400 mt-2 leading-relaxed">
+            {t(
+              "When on, sends once a day: app version, OS family, and a random single-use token — no account, no persistent ID, and your IP is never stored (a coarse country is derived server-side then discarded). No profiles, proxies, or browsing are ever included. Set",
+            )}{" "}
+            <code className="text-neutral-400">MULTIZEN_NO_TELEMETRY=1</code>{" "}
+            {t("to force it off.")}
           </div>
         </Row>
 
-        <Row icon={<Sparkles size={16} strokeWidth={1.5} />} title="About" desc="">
-          <div className="mono text-[12px] text-slate-400 leading-relaxed">
+        <Row icon={<Sparkles size={16} strokeWidth={1.5} />} title={t("About")} desc="">
+          <div className="mono text-[12px] text-neutral-400 leading-relaxed">
             MultiZen v{info?.appVersion ?? "0.0.0"} · {info?.platform ?? "—"} · Electron{" "}
             {electronVersion()}
           </div>
@@ -384,44 +430,47 @@ function electronVersion(): string {
   return "33";
 }
 
-function updateLabel(status: UpdateStatus | null): string {
+function updateLabel(status: UpdateStatus | null, t: TFunc): string {
   switch (status?.kind) {
     case "checking":
-      return "Checking…";
+      return t("Checking…");
     case "up-to-date":
-      return "You're on the latest version";
+      return t("You're on the latest version");
     case "available":
-      return `v${status.version} available`;
+      return t("v{version} available", { version: status.version });
     case "downloading":
-      return `Downloading v${status.version}… ${status.percent}%`;
+      return t("Downloading v{version}… {percent}%", {
+        version: status.version,
+        percent: status.percent,
+      });
     case "ready":
-      return `v${status.version} ready — restart to update`;
+      return t("v{version} ready — restart to update", { version: status.version });
     case "error":
-      return `Check failed: ${status.message}`;
+      return t("Check failed: {message}", { message: status.message });
     default:
       return "";
   }
 }
 
-function engineUpdateLabel(status: EngineUpdateStatus | null): string {
+function engineUpdateLabel(status: EngineUpdateStatus | null, t: TFunc): string {
   switch (status?.kind) {
     case "checking":
-      return "Checking…";
+      return t("Checking…");
     case "up-to-date":
-      return "Engine is up to date";
+      return t("Engine is up to date");
     case "available":
-      return `v${status.version} available`;
+      return t("v{version} available", { version: status.version });
     case "downloading": {
       const pct =
         status.bytesTotal > 0
           ? Math.round((status.bytesReceived / status.bytesTotal) * 100)
           : 0;
-      return `Downloading v${status.version}… ${pct}%`;
+      return t("Downloading v{version}… {percent}%", { version: status.version, percent: pct });
     }
     case "staged":
-      return `v${status.version} will apply next time you launch a profile`;
+      return t("v{version} will apply next time you launch a profile", { version: status.version });
     case "error":
-      return `Check failed: ${status.message}`;
+      return t("Check failed: {message}", { message: status.message });
     default:
       return "";
   }
@@ -452,17 +501,17 @@ function Row({
           width: 36,
           height: 36,
           borderRadius: 10,
-          background: "rgba(168,85,247,0.10)",
-          boxShadow: "inset 0 0 0 1px rgba(168,85,247,0.18)",
-          color: "#c084fc",
+          background: "rgba(255,255,255,0.10)",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.18)",
+          color: "#e5e5e5",
         }}
       >
         {icon}
       </div>
       <div className="flex-1">
-        <div className="text-[13px] font-semibold text-slate-100">{title}</div>
+        <div className="text-[13px] font-semibold text-neutral-100">{title}</div>
         {desc && (
-          <div className="text-[12px] text-slate-400 mt-1 leading-relaxed max-w-[480px]">
+          <div className="text-[12px] text-neutral-400 mt-1 leading-relaxed max-w-[480px]">
             {desc}
           </div>
         )}

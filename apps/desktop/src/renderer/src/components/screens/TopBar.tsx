@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 import { Search, Settings as SettingsIcon } from "lucide-react";
 import { Cube, Pill, Kbd } from "../atoms";
+import { useI18n } from "../../lib/i18n";
 
 interface Props {
   totalCount: number;
@@ -20,13 +21,14 @@ const IS_MAC = /Macintosh|Mac OS X/.test(navigator.userAgent);
 const IS_WINDOWS = /Windows/.test(navigator.userAgent);
 
 export function TopBar({ totalCount, runningCount, mcpUrl, onCmdK, onSettings }: Props): JSX.Element {
+  const { t } = useI18n();
   return (
     <div
       className="drag-region flex items-center gap-3.5 relative flex-shrink-0"
       style={{
         height: 44,
         padding: IS_WINDOWS ? "0 152px 0 14px" : "0 14px",
-        background: "rgba(16,18,24,0.7)",
+        background: "rgba(23,23,23,0.7)",
         backdropFilter: "blur(20px)",
         borderBottom: "1px solid rgba(255,255,255,0.05)",
       }}
@@ -38,7 +40,7 @@ export function TopBar({ totalCount, runningCount, mcpUrl, onCmdK, onSettings }:
           isn't selectable and pointer events fall through to the drag region. */}
       <div className="flex items-center gap-2 ml-2 pointer-events-none">
         <Cube size={20} />
-        <span className="font-bold text-[13px] tracking-tight text-slate-100">MultiZen</span>
+        <span className="font-bold text-[13px] tracking-tight text-neutral-100">MultiZen</span>
       </div>
 
       {/* Search trigger — center, opens command palette */}
@@ -55,30 +57,30 @@ export function TopBar({ totalCount, runningCount, mcpUrl, onCmdK, onSettings }:
           boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.19)",
         }}
       >
-        <Search size={14} className="text-slate-400" />
-        <span className="flex-1 text-left text-[13px] text-slate-400">
-          Search profiles, tags, urls…
+        <Search size={14} className="text-neutral-400" />
+        <span className="flex-1 text-left text-[13px] text-neutral-400">
+          {t("Search profiles, tags, urls…")}
         </span>
         <Kbd>⌘ K</Kbd>
       </button>
 
       {/* Right cluster */}
       <div className="no-drag flex items-center gap-3">
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-          <span className="mono text-slate-300 text-[12px]">{runningCount}</span>
-          <span>running</span>
-          <span className="text-slate-400">·</span>
-          <span className="mono text-slate-400 text-[12px]">{totalCount}</span>
-          <span>total</span>
+        <div className="flex items-center gap-1.5 text-[11px] text-neutral-400">
+          <span className="mono text-neutral-300 text-[12px]">{runningCount}</span>
+          <span>{t("running")}</span>
+          <span className="text-neutral-400">·</span>
+          <span className="mono text-neutral-400 text-[12px]">{totalCount}</span>
+          <span>{t("total")}</span>
         </div>
         <Pill kind={mcpUrl ? "running" : "idle"} dot={!!mcpUrl}>
-          MCP {mcpUrl ? `· :${new URL(mcpUrl).port}` : "off"}
+          MCP {mcpUrl ? `· :${new URL(mcpUrl).port}` : t("off")}
         </Pill>
         <button
           type="button"
           onClick={onSettings}
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-white/5 hover:text-slate-200 transition-colors"
-          aria-label="Settings"
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-400 hover:bg-white/5 hover:text-neutral-200 transition-colors"
+          aria-label={t("Settings")}
         >
           <SettingsIcon size={14} />
         </button>

@@ -108,6 +108,8 @@ export interface MultizenApi {
   };
   system: {
     info: () => Promise<SystemInfo>;
+    /** Push the renderer's UI language so main-process dialogs match it. */
+    setLang: (lang: "en" | "zh") => void;
   };
   chromium: {
     status: () => Promise<ChromiumStatus>;

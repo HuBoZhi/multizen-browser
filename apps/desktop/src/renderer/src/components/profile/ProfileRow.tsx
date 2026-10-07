@@ -13,6 +13,7 @@ import {
 } from "../atoms";
 import { Button } from "../atoms/Button";
 import { relativeTime } from "../../lib/relativeTime";
+import { useI18n } from "../../lib/i18n";
 import { cn } from "../../lib/cn";
 import { profileEmoji } from "../../lib/profileEmoji";
 import { emojiTint } from "../../lib/emojiTint";
@@ -21,9 +22,9 @@ import type { TileData, TileState } from "./ProfileTile";
 import { PROFILE_TABLE_GRID_TEMPLATE } from "./ProfileTable";
 
 const STATE_RING_COLOR: Record<TileState, string> = {
-  idle: "rgba(148,163,184,0.3)",      // slate
+  idle: "rgba(163,163,163,0.3)",      // neutral
   running: "rgba(52,211,153,0.6)",    // emerald
-  ai: "rgba(192,132,252,0.6)",        // purple
+  ai: "rgba(229,229,229,0.6)",        // neutral
   error: "rgba(248,113,113,0.6)",     // red
 };
 
@@ -56,6 +57,7 @@ export function ProfileRow({
   onDuplicate,
   onDelete,
 }: Props): JSX.Element {
+  const { t } = useI18n();
   const isRunning = profile.state !== "idle";
   const liveRuns = runs ?? [];
   const showTerminating = terminating && liveRuns.length === 0;
@@ -123,24 +125,24 @@ export function ProfileRow({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 min-w-0">
-            <div className="text-[13px] font-semibold text-slate-100 truncate group-hover:text-white">
+            <div className="text-[13px] font-semibold text-neutral-100 truncate group-hover:text-white">
               {profile.name}
             </div>
             <ChevronRight
               size={12}
-              className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+              className="text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
             />
           </div>
-          <div className="flex items-center gap-1.5 mono text-[10px] text-slate-400 truncate">
+          <div className="flex items-center gap-1.5 mono text-[10px] text-neutral-400 truncate">
             <PlatformIcon
               platform={platformFromDeviceFamily(profile.device)}
               size={11}
-              className="text-slate-400 flex-shrink-0"
+              className="text-neutral-400 flex-shrink-0"
             />
-            <span className="text-slate-400 flex-shrink-0">
+            <span className="text-neutral-400 flex-shrink-0">
               {platformLabel(platformFromDeviceFamily(profile.device))}
             </span>
-            <span className="text-slate-400 flex-shrink-0">·</span>
+            <span className="text-neutral-400 flex-shrink-0">·</span>
             <span className="truncate">{profile.id.slice(0, 12)}</span>
           </div>
         </div>
@@ -156,7 +158,7 @@ export function ProfileRow({
         {profile.tags.slice(0, 3).map((t) => (
           <span
             key={t}
-            className="mz-pill mono text-slate-400 truncate"
+            className="mz-pill mono text-neutral-400 truncate"
             style={{
               background: "rgba(255,255,255,0.06)",
               boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17)",
@@ -167,15 +169,15 @@ export function ProfileRow({
           </span>
         ))}
         {profile.tags.length > 3 && (
-          <span className="mz-pill mono text-slate-400 flex-shrink-0">
+          <span className="mz-pill mono text-neutral-400 flex-shrink-0">
             +{profile.tags.length - 3}
           </span>
         )}
       </div>
 
       {/* Last opened */}
-      <div className="mono text-[11px] text-slate-400 truncate">
-        {profile.lastOpenedAt ? relativeTime(profile.lastOpenedAt) : "never"}
+      <div className="mono text-[11px] text-neutral-400 truncate">
+        {profile.lastOpenedAt ? relativeTime(profile.lastOpenedAt) : t("never")}
       </div>
 
       {/* Proxy — live health (parity with the grid card), compact for the row */}
@@ -193,10 +195,10 @@ export function ProfileRow({
             variant="secondary"
             size="sm"
             disabled
-            title="Terminating…"
+            title={t("Terminating…")}
             leftIcon={<Loader2 size={9} className="animate-spin" />}
           >
-            Ending
+            {t("Ending")}
           </Button>
         ) : !isRunning ? (
           <Button
@@ -206,7 +208,7 @@ export function ProfileRow({
             onClick={handleLaunch}
             leftIcon={<Play size={10} fill="currentColor" strokeWidth={0} />}
           >
-            {pending ? "…" : "Launch"}
+            {pending ? t("…") : t("Launch")}
           </Button>
         ) : (
           <>
@@ -215,20 +217,27 @@ export function ProfileRow({
               size="sm"
               disabled={pending}
               onClick={handleNewInstance}
-              title={"Launch one more instance" + (liveRuns.length ? ` (${liveRuns.length} running: ${liveRuns.map((r) => ":" + r.mcpPort).join(", ")})` : "")}
+              title={
+                liveRuns.length
+                  ? t("Launch one more instance ({count} running: {ports})", {
+                      count: liveRuns.length,
+                      ports: liveRuns.map((r) => ":" + r.mcpPort).join(", "),
+                    })
+                  : t("Launch one more instance")
+              }
               leftIcon={<Plus size={10} strokeWidth={2.5} />}
             >
-              {pending ? "…" : "New"}
+              {pending ? t("…") : t("New")}
             </Button>
             <Button
               variant="secondary"
               size="sm"
               disabled={pending}
               onClick={handleStop}
-              title="Close ALL instances"
+              title={t("Close ALL instances")}
               leftIcon={<Square size={9} fill="currentColor" strokeWidth={0} />}
             >
-              Stop all
+              {t("Stop all")}
             </Button>
           </>
         )}
@@ -239,33 +248,38 @@ export function ProfileRow({
 }
 
 function PillForState({ profile, runCount = 0 }: { profile: TileData; runCount?: number }): JSX.Element {
+  const { t } = useI18n();
   if (profile.state === "ai") {
     return (
       <span
         className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md mono text-[10px] truncate"
         style={{
-          background: "rgba(168,85,247,0.10)",
-          color: "#c084fc",
-          boxShadow: "inset 0 0 0 1px rgba(168,85,247,0.20)",
+          background: "rgba(255,255,255,0.10)",
+          color: "#e5e5e5",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.20)",
         }}
-        title={profile.lastTool ?? "ai-driven"}
+        title={profile.lastTool ?? t("ai-driven")}
       >
         <Zap size={10} className="flex-shrink-0" />
-        <span className="truncate">{profile.lastTool ?? "ai-driven"}</span>
+        <span className="truncate">{profile.lastTool ?? t("ai-driven")}</span>
       </span>
     );
   }
   if (profile.state === "running")
-    return <Pill kind="running" dot>{runCount > 1 ? `running ×${runCount}` : "running"}</Pill>;
+    return (
+      <Pill kind="running" dot>
+        {runCount > 1 ? t("running ×{count}", { count: runCount }) : t("running")}
+      </Pill>
+    );
   if (profile.state === "error")
     // Dense row: surface the message as a hover tooltip (the grid card has room
     // for a full error line; here the status column does not).
     return (
       <span title={profile.errorMessage} className="inline-flex min-w-0">
-        <Pill kind="error">error</Pill>
+        <Pill kind="error">{t("error")}</Pill>
       </span>
     );
-  return <Pill kind="idle">idle</Pill>;
+  return <Pill kind="idle">{t("idle")}</Pill>;
 }
 
 /**
@@ -276,12 +290,13 @@ function PillForState({ profile, runCount = 0 }: { profile: TileData; runCount?:
  * instead of opening the row's Edit.
  */
 function RowProxyHealth({ profile }: { profile: TileData }): JSX.Element {
+  const { t } = useI18n();
   const { health, recheck } = useProxyHealth(profile.id, profile.proxy, profile.proxyCountry);
 
   if (health.status === "direct") {
     return (
-      <div className="flex items-center gap-1.5 mono text-[11px] text-slate-400 min-w-0">
-        <span className="truncate">direct</span>
+      <div className="flex items-center gap-1.5 mono text-[11px] text-neutral-400 min-w-0">
+        <span className="truncate">{t("direct")}</span>
       </div>
     );
   }
@@ -290,15 +305,18 @@ function RowProxyHealth({ profile }: { profile: TileData }): JSX.Element {
   const isError = health.status === "error";
   const label =
     health.status === "ok"
-      ? (health.country ?? countryNameFromCc(cc) ?? "connected")
+      ? (health.country ?? countryNameFromCc(cc) ?? t("connected"))
       : isError
-        ? "unreachable"
-        : (countryNameFromCc(cc) ?? "checking…");
+        ? t("unreachable")
+        : (countryNameFromCc(cc) ?? t("checking…"));
   const title = isError
-    ? `${health.error} — click to retry`
+    ? t("{error} — click to retry", { error: health.error })
     : health.status === "ok"
-      ? `${label}${cc ? ` · ${cc.toUpperCase()}` : ""} — click to re-check`
-      : "checking proxy…";
+      ? t("{label}{cc} — click to re-check", {
+          label,
+          cc: cc ? ` · ${cc.toUpperCase()}` : "",
+        })
+      : t("checking proxy…");
 
   return (
     <button
@@ -316,7 +334,7 @@ function RowProxyHealth({ profile }: { profile: TileData }): JSX.Element {
       >
         <Flag cc={cc} />
       </span>
-      <span className={cn("truncate", isError ? "text-red-300" : "text-slate-400")}>{label}</span>
+      <span className={cn("truncate", isError ? "text-red-300" : "text-neutral-400")}>{label}</span>
       {health.status === "ok" && (
         <span
           className="w-[6px] h-[6px] rounded-full bg-emerald-500 flex-shrink-0"
@@ -342,6 +360,7 @@ function RowMenu({
   onDuplicate: () => void;
   onDelete: () => void;
 }): JSX.Element {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
@@ -375,7 +394,7 @@ function RowMenu({
           e.stopPropagation();
           setOpen((v) => !v);
         }}
-        aria-label="More actions"
+        aria-label={t("More actions")}
         style={{ width: 28, height: 28 }}
       >
         <MoreHorizontal size={13} strokeWidth={1.5} />
@@ -398,24 +417,24 @@ function RowMenu({
               style={{
                 top: coords.top,
                 left: coords.left,
-                background: "rgba(15,16,22,0.98)",
+                background: "rgba(23,23,23,0.98)",
                 boxShadow:
                   "inset 0 0 0 1px rgba(255,255,255,0.15), 0 20px 40px rgba(0,0,0,0.6)",
                 backdropFilter: "blur(20px)",
               }}
             >
               <MenuItem onClick={() => { setOpen(false); onEdit(); }}>
-                Edit profile
+                {t("Edit profile")}
               </MenuItem>
               <MenuItem onClick={() => { setOpen(false); onExport(); }}>
-                Export archive…
+                {t("Export archive…")}
               </MenuItem>
               <MenuItem onClick={() => { setOpen(false); onDuplicate(); }}>
-                Duplicate
+                {t("Duplicate")}
               </MenuItem>
               <div style={{ height: 1, margin: "4px 0", background: "rgba(255,255,255,0.06)" }} />
               <MenuItem onClick={() => { setOpen(false); onDelete(); }} tone="danger">
-                Delete profile
+                {t("Delete profile")}
               </MenuItem>
             </div>
           </>,
@@ -447,7 +466,7 @@ function MenuItem({
       }}
       className={cn(
         "w-full text-left px-3 py-1.5 text-[12px] cursor-pointer transition-colors hover:bg-white/[0.05]",
-        tone === "danger" ? "text-red-400" : "text-slate-200",
+        tone === "danger" ? "text-red-400" : "text-neutral-200",
       )}
     >
       {children}

@@ -20,7 +20,7 @@ interface Props {
  * the surrounding cards, just a touch more opaque, with a hairline border, a
  * soft top light-edge, and a small grounding shadow for real (not haloed)
  * depth. Colourful emojis lend the well a very quiet tint; neutral emojis and
- * initials stay monochrome. AI profiles get a purple well.
+ * initials stay monochrome. AI profiles get a soft light well.
  */
 export function Avatar({ initials, emoji, tint, accent = false, size = 32 }: Props): JSX.Element {
   const radius = Math.round(size * 0.3);
@@ -49,7 +49,7 @@ export function Avatar({ initials, emoji, tint, accent = false, size = 32 }: Pro
 
   return (
     <div
-      style={{ ...surface, color: accent ? "#e9d5ff" : "#cbd5e1" }}
+      style={{ ...surface, color: accent ? "#f5f5f5" : "#d4d4d4" }}
       className="flex items-center justify-center font-semibold"
     >
       <span style={{ fontSize: Math.max(11, size / 2.5), lineHeight: 1 }}>{initials}</span>
@@ -80,7 +80,7 @@ function wellSurface({
   const topL = accent ? 26 : 17;
   const botL = accent ? 17 : 12;
 
-  const border = accent ? "rgba(168,85,247,0.34)" : "rgba(255,255,255,0.07)";
+  const border = accent ? "rgba(255,255,255,0.34)" : "rgba(255,255,255,0.07)";
 
   return {
     width: size,
@@ -95,8 +95,8 @@ function wellSurface({
       `inset 0 0 0 1px ${border}`,
       // grounds the tile without a coloured halo
       "0 1px 2px rgba(0,0,0,0.35)",
-      // accent adds only the faintest purple lift, never a neon glow
-      accent ? "0 2px 10px -4px rgba(168,85,247,0.35)" : "0 0 0 0 rgba(0,0,0,0)",
+      // accent adds only the faintest light lift, never a neon glow
+      accent ? "0 2px 10px -4px rgba(255,255,255,0.35)" : "0 0 0 0 rgba(0,0,0,0)",
     ].join(", "),
   };
 }

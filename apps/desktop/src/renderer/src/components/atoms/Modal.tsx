@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { useI18n } from "../../lib/i18n";
 
 /**
  * Generic modal primitive. Handles:
@@ -64,6 +65,7 @@ export function Modal({
   panelClassName,
   children,
 }: ModalProps): JSX.Element | null {
+  const { t } = useI18n();
   const idRef = useRef<number>(0);
   const previouslyFocused = useRef<HTMLElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -164,10 +166,10 @@ export function Modal({
           width: "100%",
           maxWidth: width,
           maxHeight: "calc(100vh - 64px)",
-          background: "rgba(15,16,22,0.96)",
+          background: "rgba(23,23,23,0.96)",
           borderRadius: 18,
           boxShadow:
-            "inset 0 0 0 1px rgba(255,255,255,0.15), 0 36px 96px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(168,85,247,0.06)",
+            "inset 0 0 0 1px rgba(255,255,255,0.15), 0 36px 96px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06)",
           backdropFilter: "blur(24px)",
           WebkitBackdropFilter: "blur(24px)",
           animation: "mz-modal-pop 220ms cubic-bezier(0.2,0.8,0.2,1)",
@@ -180,19 +182,19 @@ export function Modal({
           >
             <div className="flex-1 min-w-0">
               {title && (
-                <div className="text-[15px] font-bold text-slate-100 leading-tight">
+                <div className="text-[15px] font-bold text-neutral-100 leading-tight">
                   {title}
                 </div>
               )}
               {subtitle && (
-                <div className="text-[12px] text-slate-400 mt-1">{subtitle}</div>
+                <div className="text-[12px] text-neutral-400 mt-1">{subtitle}</div>
               )}
             </div>
             <button
               type="button"
               onClick={() => void tryClose()}
-              aria-label="Close"
-              className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] transition-colors"
+              aria-label={t("Close")}
+              className="w-7 h-7 flex items-center justify-center rounded-md text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.06] transition-colors"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 6 6 18" />
@@ -248,6 +250,7 @@ let confirmHostSetter:
   | null = null;
 
 export function ConfirmHost(): JSX.Element | null {
+  const { t } = useI18n();
   const [state, setState] = useState<ConfirmHostState>({
     open: false,
     title: "",
@@ -274,9 +277,9 @@ export function ConfirmHost(): JSX.Element | null {
       panelClassName="!rounded-2xl"
     >
       <div className="px-5 pt-5 pb-4">
-        <div className="text-[15px] font-bold text-slate-100">{state.title}</div>
+        <div className="text-[15px] font-bold text-neutral-100">{state.title}</div>
         {state.body && (
-          <div className="text-[13px] text-slate-400 mt-2 leading-relaxed">
+          <div className="text-[13px] text-neutral-400 mt-2 leading-relaxed">
             {state.body}
           </div>
         )}
@@ -284,9 +287,9 @@ export function ConfirmHost(): JSX.Element | null {
           <button
             type="button"
             onClick={() => close(false)}
-            className="px-3 h-8 text-[12px] rounded-lg text-slate-300 hover:text-slate-100 hover:bg-white/[0.06] transition-colors"
+            className="px-3 h-8 text-[12px] rounded-lg text-neutral-300 hover:text-neutral-100 hover:bg-white/[0.06] transition-colors"
           >
-            {state.cancelLabel ?? "Cancel"}
+            {state.cancelLabel ?? t("Cancel")}
           </button>
           <button
             type="button"
@@ -296,14 +299,14 @@ export function ConfirmHost(): JSX.Element | null {
             style={{
               background: state.destructive
                 ? "rgba(239,68,68,0.18)"
-                : "linear-gradient(180deg, rgba(168,85,247,0.95), rgba(168,85,247,0.75))",
+                : "linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.75))",
               color: state.destructive ? "#fca5a5" : "white",
               boxShadow: state.destructive
                 ? "inset 0 0 0 1px rgba(239,68,68,0.4)"
-                : "inset 0 1px 0 rgba(255,255,255,0.16), 0 4px 12px -2px rgba(168,85,247,0.4)",
+                : "inset 0 1px 0 rgba(255,255,255,0.16), 0 4px 12px -2px rgba(255,255,255,0.4)",
             }}
           >
-            {state.confirmLabel ?? "Confirm"}
+            {state.confirmLabel ?? t("Confirm")}
           </button>
         </div>
       </div>

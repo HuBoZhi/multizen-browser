@@ -1,4 +1,5 @@
 import { useState, type JSX } from "react";
+import { useI18n } from "../../lib/i18n";
 import { Cube } from "../atoms";
 
 interface Props {
@@ -18,10 +19,11 @@ const DEFAULT_NAME = "My first profile";
  * proxy / fingerprint are editable later from the profile panel.
  */
 export function FirstRun({ onCreate }: Props): JSX.Element {
+  const { t } = useI18n();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   // Pre-filled with the default. The input below auto-selects on focus,
   // so the user can hit Enter to accept or just start typing to replace.
-  const [name, setName] = useState(DEFAULT_NAME);
+  const [name, setName] = useState(t(DEFAULT_NAME));
   const [telemetry, setTelemetry] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -41,7 +43,7 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
       } catch {
         /* leave the default (off) */
       }
-      await onCreate(name.trim() || DEFAULT_NAME, []);
+      await onCreate(name.trim() || t(DEFAULT_NAME), []);
     } finally {
       setBusy(false);
     }
@@ -51,7 +53,7 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
     <div
       className="fixed inset-0 z-50 flex flex-col items-center justify-center"
       style={{
-        background: "#0a0b0f",
+        background: "#141414",
         padding: 48,
         overflow: "hidden",
       }}
@@ -80,7 +82,7 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
           width: 600,
           height: 600,
           borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(168,85,247,0.10), transparent 70%)",
+          background: "radial-gradient(circle, rgba(255,255,255,0.10), transparent 70%)",
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
@@ -98,25 +100,24 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
           <>
             <div>
               <div
-                className="font-bold tracking-tight text-slate-100"
+                className="font-bold tracking-tight text-neutral-100"
                 style={{ fontSize: 30, lineHeight: 1.1, letterSpacing: "-0.02em" }}
               >
-                A library of isolated browsers.
+                {t("A library of isolated browsers.")}
               </div>
-              <div className="text-[14px] text-slate-400 mt-3 leading-relaxed">
-                Cookies, login, fingerprint, and proxy isolated per profile.
-                Drive them yourself or via any MCP agent.
+              <div className="text-[14px] text-neutral-400 mt-3 leading-relaxed">
+                {t("Cookies, login, fingerprint, and proxy isolated per profile. Drive them yourself or via any MCP agent.")}
               </div>
             </div>
-            <div className="flex items-center gap-3 mt-1.5 mono text-[11px] text-slate-400">
+            <div className="flex items-center gap-3 mt-1.5 mono text-[11px] text-neutral-400">
               <span>macOS</span>
-              <span className="text-slate-400">·</span>
+              <span className="text-neutral-400">·</span>
               <span>Windows</span>
-              <span className="text-slate-400">·</span>
+              <span className="text-neutral-400">·</span>
               <span>Linux</span>
-              <span className="text-slate-400">·</span>
+              <span className="text-neutral-400">·</span>
               <span>Chromium</span>
-              <span className="text-slate-400">·</span>
+              <span className="text-neutral-400">·</span>
               <span>MCP HTTP</span>
             </div>
             <button
@@ -125,7 +126,7 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
               className="btn-brand text-[13px] mt-2"
               style={{ padding: "10px 16px", borderRadius: 11 }}
             >
-              Continue
+              {t("Continue")}
             </button>
           </>
         )}
@@ -134,16 +135,13 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
           <>
             <div>
               <div
-                className="font-bold tracking-tight text-slate-100"
+                className="font-bold tracking-tight text-neutral-100"
                 style={{ fontSize: 26, lineHeight: 1.15, letterSpacing: "-0.01em" }}
               >
-                Help improve MultiZen?
+                {t("Help improve MultiZen?")}
               </div>
-              <div className="text-[13px] text-slate-400 mt-2.5 leading-relaxed">
-                Optionally send an anonymous daily heartbeat: just app version and
-                OS family. No account, no persistent ID, and your IP is never
-                stored. No profiles, proxies, or browsing — ever. Off unless you
-                enable it; change it anytime in Settings.
+              <div className="text-[13px] text-neutral-400 mt-2.5 leading-relaxed">
+                {t("Optionally send an anonymous daily heartbeat: just app version and OS family. No account, no persistent ID, and your IP is never stored. No profiles, proxies, or browsing — ever. Off unless you enable it; change it anytime in Settings.")}
               </div>
             </div>
             <div className="flex items-center gap-2.5 mt-1">
@@ -153,7 +151,7 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
                 className="btn-brand text-[13px]"
                 style={{ padding: "10px 16px", borderRadius: 11 }}
               >
-                Enable
+                {t("Enable")}
               </button>
               <button
                 type="button"
@@ -161,7 +159,7 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
                 className="btn-ghost text-[13px]"
                 style={{ padding: "10px 16px", borderRadius: 11 }}
               >
-                Not now
+                {t("Not now")}
               </button>
             </div>
           </>
@@ -171,14 +169,13 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
           <>
             <div>
               <div
-                className="font-bold tracking-tight text-slate-100"
+                className="font-bold tracking-tight text-neutral-100"
                 style={{ fontSize: 26, lineHeight: 1.15, letterSpacing: "-0.01em" }}
               >
-                Name your first profile.
+                {t("Name your first profile.")}
               </div>
-              <div className="text-[13px] text-slate-400 mt-2.5 leading-relaxed">
-                Just a label to find it later. Tags, proxy, and fingerprint are
-                editable anytime from the profile panel.
+              <div className="text-[13px] text-neutral-400 mt-2.5 leading-relaxed">
+                {t("Just a label to find it later. Tags, proxy, and fingerprint are editable anytime from the profile panel.")}
               </div>
             </div>
             <div className="w-full text-left">
@@ -190,8 +187,8 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !busy) void submit();
                 }}
-                placeholder={DEFAULT_NAME}
-                className="w-full px-4 py-3 rounded-xl bg-white/[0.03] text-[14px] text-slate-100 placeholder:text-slate-400 outline-none focus:bg-white/[0.05] transition-colors mono"
+                placeholder={t(DEFAULT_NAME)}
+                className="w-full px-4 py-3 rounded-xl bg-white/[0.03] text-[14px] text-neutral-100 placeholder:text-neutral-400 outline-none focus:bg-white/[0.05] transition-colors mono"
                 style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)" }}
               />
             </div>
@@ -202,7 +199,7 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
               className="btn-brand text-[13px] mt-2"
               style={{ padding: "10px 16px", borderRadius: 11 }}
             >
-              {busy ? "Creating…" : "Create profile"}
+              {busy ? t("Creating…") : t("Create profile")}
             </button>
           </>
         )}
@@ -216,7 +213,7 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
                 width: i === step ? 22 : 6,
                 height: 6,
                 borderRadius: 3,
-                background: i === step ? "linear-gradient(90deg, #a855f7, #ec4899)" : "rgba(255,255,255,0.08)",
+                background: i === step ? "linear-gradient(90deg, #e5e5e5, #a3a3a3)" : "rgba(255,255,255,0.08)",
                 transition: "width 240ms cubic-bezier(0.2,0.8,0.2,1)",
               }}
             />

@@ -7,6 +7,7 @@ import { EmojiField } from "./EmojiField";
 import { BrowserSection, DEFAULT_START_URL } from "./BrowserSection";
 import type { ExtensionConfig, FingerprintConfig, ProxyConfig } from "../../types";
 import { parseProxyString } from "../../lib/parseProxy";
+import { useI18n } from "../../lib/i18n";
 import {
   Field,
   Input,
@@ -51,6 +52,7 @@ const EMPTY_PROXY: DraftProxy = {
  * bar commits the whole draft with Create / Create & launch.
  */
 export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): JSX.Element {
+  const { t } = useI18n();
   const [section, setSection] = useState<SectionId>("general");
   const [name, setName] = useState("");
   const [tagsRaw, setTagsRaw] = useState("");
@@ -97,7 +99,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
   function buildProxy(): ProxyConfig | undefined {
     if (!proxy.enabled) return undefined;
     if (!proxy.host.trim()) {
-      throw new Error("Proxy host is required");
+      throw new Error(t("Proxy host is required"));
     }
     return {
       type: proxy.type,
@@ -123,7 +125,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
 
   async function submit(autoLaunch: boolean): Promise<void> {
     if (!name.trim()) {
-      setError("Name is required");
+      setError(t("Name is required"));
       setSection("general");
       return;
     }
@@ -178,11 +180,11 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
           {section === "general" && (
             <div className="space-y-3">
               <div className="flex gap-2.5 items-end">
-                <Field label="Icon">
+                <Field label={t("Icon")}>
                   <EmojiField value={icon} onChange={setIcon} name={name} tags={tagList} />
                 </Field>
                 <div className="grid grid-cols-2 gap-2.5 flex-1 min-w-0">
-                  <Field label="Name">
+                  <Field label={t("Name")}>
                     <Input
                       autoFocusHint
                       value={name}
@@ -190,25 +192,25 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
                         setName(v);
                         setError(null); // clear a stale "…required" as they fix it
                       }}
-                      placeholder="e.g. acme — sales · west"
+                      placeholder={t("e.g. acme — sales · west")}
                     />
                   </Field>
-                  <Field label="Tags">
+                  <Field label={t("Tags")}>
                     <Input
                       value={tagsRaw}
                       onChange={setTagsRaw}
-                      placeholder="comma-separated (optional)"
+                      placeholder={t("comma-separated (optional)")}
                     />
                   </Field>
                 </div>
               </div>
-              <Field label="Notes">
+              <Field label={t("Notes")}>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Optional — what this profile is for"
+                  placeholder={t("Optional — what this profile is for")}
                   rows={3}
-                  className="w-full px-2.5 py-2 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 placeholder:text-slate-400 outline-none focus:bg-white/[0.05] transition-colors resize-none"
+                  className="w-full px-2.5 py-2 rounded-lg bg-white/[0.03] text-[12px] text-neutral-200 placeholder:text-neutral-400 outline-none focus:bg-white/[0.05] transition-colors resize-none"
                   style={{
                     boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)",
                     fontFamily: "var(--font-sans)",
@@ -224,32 +226,32 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
 
           {section === "proxy" && (
             <div>
-              <label className="flex items-center gap-2 text-[12px] text-slate-300 cursor-pointer mb-2.5">
+              <label className="flex items-center gap-2 text-[12px] text-neutral-300 cursor-pointer mb-2.5">
                 <input
                   type="checkbox"
                   checked={proxy.enabled}
                   onChange={(e) => setProxy((p) => ({ ...p, enabled: e.target.checked }))}
-                  className="w-3.5 h-3.5 rounded accent-purple-500"
+                  className="w-3.5 h-3.5 rounded accent-neutral-300"
                 />
-                Use proxy
+                {t("Use proxy")}
               </label>
               {proxy.enabled && (
                 <div className="space-y-2.5">
                   <div className="grid grid-cols-[110px_1fr_90px] gap-2.5">
-                    <Field label="Type">
+                    <Field label={t("Type")}>
                       <select
                         value={proxy.type}
                         onChange={(e) =>
                           setProxy((p) => ({ ...p, type: e.target.value as "http" | "socks5" }))
                         }
-                        className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 outline-none"
+                        className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-neutral-200 outline-none"
                         style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)" }}
                       >
-                        <option value="http">HTTP</option>
-                        <option value="socks5">SOCKS5</option>
+                        <option value="http">{t("HTTP")}</option>
+                        <option value="socks5">{t("SOCKS5")}</option>
                       </select>
                     </Field>
-                    <Field label="Host">
+                    <Field label={t("Host")}>
                       <Input
                         value={proxy.host}
                         onChange={(v) => {
@@ -269,28 +271,28 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
                           }));
                           return true;
                         }}
-                        placeholder="host or host:port:user:pass"
+                        placeholder={t("host or host:port:user:pass")}
                         mono
                       />
                     </Field>
-                    <Field label="Port">
+                    <Field label={t("Port")}>
                       <Input
                         value={proxy.port}
                         onChange={(v) => setProxy((p) => ({ ...p, port: v }))}
-                        placeholder="8080"
+                        placeholder={t("8080")}
                         mono
                       />
                     </Field>
                   </div>
                   <div className="grid grid-cols-2 gap-2.5">
-                    <Field label="Username">
+                    <Field label={t("Username")}>
                       <Input
                         value={proxy.username}
                         onChange={(v) => setProxy((p) => ({ ...p, username: v }))}
                         mono
                       />
                     </Field>
-                    <Field label="Password">
+                    <Field label={t("Password")}>
                       <Input
                         type="password"
                         value={proxy.password}
@@ -322,7 +324,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
                 proxy={proxyForForm}
               />
             ) : (
-              <div className="text-[11px] text-slate-400">Loading preset…</div>
+              <div className="text-[11px] text-neutral-400">{t("Loading preset…")}</div>
             ))}
         </div>
       </div>
@@ -341,7 +343,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
           onClick={onCancel}
           disabled={busy}
         >
-          Cancel
+          {t("Cancel")}
         </button>
         <button
           type="button"
@@ -349,7 +351,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
           onClick={() => void submit(false)}
           className="btn-secondary px-3 py-[7px] text-[12px] rounded-[9px]"
         >
-          Create
+          {t("Create")}
         </button>
         <button
           type="button"
@@ -357,7 +359,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
           onClick={() => void submit(true)}
           className="btn-brand px-3 py-[7px] text-[12px] rounded-[9px]"
         >
-          {busy ? "…" : "Create & launch"}
+          {busy ? "…" : t("Create & launch")}
           <Kbd variant="on-brand">⌘ ⏎</Kbd>
         </button>
       </div>

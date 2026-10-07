@@ -1,6 +1,7 @@
 import { Component, StrictMode, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
+import { I18nProvider } from "./lib/i18n";
 import "./styles.css";
 
 const root = document.getElementById("root");
@@ -46,7 +47,9 @@ window.addEventListener("unhandledrejection", (e) => {
 createRoot(root).render(
   <StrictMode>
     <ErrorBoundary>
-      <App />
+      <I18nProvider>
+        <App />
+      </I18nProvider>
     </ErrorBoundary>
   </StrictMode>,
 );

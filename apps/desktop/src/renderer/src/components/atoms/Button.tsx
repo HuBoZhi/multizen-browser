@@ -10,7 +10,7 @@ import { cn } from "../../lib/cn";
  *   primary     — brand gradient. The single most-important action on the screen.
  *   secondary   — neutral white-tint chip. Default for non-primary actions.
  *   ghost       — transparent until hover. For tertiary or icon-only actions.
- *   accent      — purple soft pill. Use for "launch / open / drive" actions.
+ *   accent      — soft neutral pill. Use for "launch / open / drive" actions.
  *   success     — emerald soft pill. Use for "running / connected" affordances.
  *   warning     — amber soft pill.
  *   danger      — red soft pill. Use for "wipe / delete / kill".
@@ -38,28 +38,28 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 /* tint, fg, ring (using rgb for inset shadow) */
 const VARIANT_TOKENS: Record<Variant, { bg: string; fg: string; ring: string; hoverBg: string }> = {
   primary: {
-    bg: "linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)",
-    fg: "#ffffff",
-    ring: "rgba(255, 255, 255, 0.15)",
-    hoverBg: "linear-gradient(135deg, #7273f3 0%, #b366f9 50%, #f060a3 100%)",
+    bg: "linear-gradient(135deg, #f5f5f5 0%, #e5e5e5 50%, #a3a3a3 100%)",
+    fg: "#171717",
+    ring: "rgba(0, 0, 0, 0.1)",
+    hoverBg: "linear-gradient(135deg, #ffffff 0%, #f0f0f0 50%, #bfbfbf 100%)",
   },
   secondary: {
     bg: "rgba(255, 255, 255, 0.04)",
-    fg: "#cbd5e1",
+    fg: "#d4d4d4",
     ring: "rgba(255, 255, 255, 0.08)",
     hoverBg: "rgba(255, 255, 255, 0.07)",
   },
   ghost: {
     bg: "transparent",
-    fg: "#94a3b8",
+    fg: "#a3a3a3",
     ring: "rgba(255, 255, 255, 0.05)",
     hoverBg: "rgba(255, 255, 255, 0.04)",
   },
   accent: {
-    bg: "rgba(168, 85, 247, 0.10)",
-    fg: "#c4b5fd",
-    ring: "rgba(168, 85, 247, 0.20)",
-    hoverBg: "rgba(168, 85, 247, 0.16)",
+    bg: "rgba(255, 255, 255, 0.10)",
+    fg: "#e5e5e5",
+    ring: "rgba(255, 255, 255, 0.20)",
+    hoverBg: "rgba(255, 255, 255, 0.16)",
   },
   success: {
     bg: "rgba(16, 185, 129, 0.10)",
@@ -121,7 +121,7 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
         background: t.bg,
         color: t.fg,
         boxShadow: isPrimary
-          ? `inset 0 0 0 1px ${t.ring}, 0 6px 20px -6px rgba(168, 85, 247, 0.45)`
+          ? `inset 0 0 0 1px ${t.ring}, 0 6px 20px -6px rgba(0, 0, 0, 0.5)`
           : `inset 0 0 0 1px ${t.ring}`,
         ...style,
       }}

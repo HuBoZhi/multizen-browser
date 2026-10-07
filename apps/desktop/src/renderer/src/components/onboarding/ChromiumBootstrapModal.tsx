@@ -1,5 +1,6 @@
 import { useEffect, useState, type JSX } from "react";
 import { AlertTriangle, Download, Loader2 } from "lucide-react";
+import { useI18n, type TFunc } from "../../lib/i18n";
 import { Button } from "../atoms/Button";
 import { Cube } from "../atoms/Cube";
 import type { ChromiumStatus } from "../../types";
@@ -14,6 +15,7 @@ import type { ChromiumStatus } from "../../types";
  * When status is "ready", modal is hidden — Chromium is good to spawn.
  */
 export function ChromiumBootstrapModal(): JSX.Element | null {
+  const { t } = useI18n();
   const [status, setStatus] = useState<ChromiumStatus | null>(null);
 
   useEffect(() => {
@@ -33,15 +35,15 @@ export function ChromiumBootstrapModal(): JSX.Element | null {
       <div
         className="rounded-2xl p-6 w-full max-w-md mx-6"
         style={{
-          background: "rgba(15,16,22,0.95)",
+          background: "rgba(23,23,23,0.95)",
           boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17), 0 30px 80px rgba(0,0,0,0.6)",
         }}
       >
         <div className="flex items-center gap-3 mb-4">
           <Cube size={36} glow={false} />
           <div>
-            <div className="text-[15px] font-bold text-slate-100">{titleFor(status)}</div>
-            <div className="text-[12px] text-slate-400 mt-0.5">{subtitleFor(status)}</div>
+            <div className="text-[15px] font-bold text-neutral-100">{titleFor(status, t)}</div>
+            <div className="text-[12px] text-neutral-400 mt-0.5">{subtitleFor(status, t)}</div>
           </div>
         </div>
 
@@ -51,68 +53,69 @@ export function ChromiumBootstrapModal(): JSX.Element | null {
   );
 }
 
-function titleFor(status: ChromiumStatus): string {
+function titleFor(status: ChromiumStatus, t: TFunc): string {
   switch (status.kind) {
     case "missing":
-      return "Setting up MultiZen";
+      return t("Setting up MultiZen");
     case "fetching-manifest":
-      return "Looking up the browser runtime";
+      return t("Looking up the browser runtime");
     case "downloading":
-      return "Downloading browser runtime";
+      return t("Downloading browser runtime");
     case "verifying":
-      return "Verifying download";
+      return t("Verifying download");
     case "extracting":
-      return "Installing browser runtime";
+      return t("Installing browser runtime");
     case "error":
-      return "Setup failed";
+      return t("Setup failed");
     default:
       return "MultiZen";
   }
 }
 
-function subtitleFor(status: ChromiumStatus): string {
+function subtitleFor(status: ChromiumStatus, t: TFunc): string {
   switch (status.kind) {
     case "missing":
-      return "First-run download. About 150-550 MB.";
+      return t("First-run download. About 150-550 MB.");
     case "fetching-manifest":
-      return "Resolving the latest compatible build";
+      return t("Resolving the latest compatible build");
     case "downloading":
-      return `Runtime ${status.version}`;
+      return t("Runtime {version}", { version: status.version });
     case "verifying":
-      return "Checking integrity (SHA-256 + macOS code signature)";
+      return t("Checking integrity (SHA-256 + macOS code signature)");
     case "extracting":
-      return `Unpacking runtime ${status.version}…`;
+      return t("Unpacking runtime {version}…", { version: status.version });
     case "error":
-      return "We could not download the Chromium binary.";
+      return t("We could not download the Chromium binary.");
     default:
       return "";
   }
 }
 
 function Body({ status }: { status: ChromiumStatus }): JSX.Element {
+  const { t } = useI18n();
   if (status.kind === "missing") {
     return (
-      <div className="flex items-center gap-2 text-[12px] text-slate-400">
-        <Loader2 size={14} className="animate-spin text-purple-400" />
-        Preparing download…
+      <div className="flex items-center gap-2 text-[12px] text-neutral-400">
+        <Loader2 size={14} className="animate-spin text-neutral-300" />
+        {t("Preparing download…")}
       </div>
     );
   }
 
   if (status.kind === "fetching-manifest") {
     return (
-      <div className="flex items-center gap-2 text-[12px] text-slate-400">
-        <Loader2 size={14} className="animate-spin text-purple-400" />
-        Resolving latest stable version…
+      <div className="flex items-center gap-2 text-[12px] text-neutral-400">
+        <Loader2 size={14} className="animate-spin text-neutral-300" />
+        {t("Resolving latest stable version…")}
       </div>
     );
   }
 
   if (status.kind === "extracting") {
     return (
-      <div className="flex items-center gap-2 text-[12px] text-slate-400">
-        <Loader2 size={14} className="animate-spin text-purple-400" />
-        Unpacking and verifying signature…
+      <div className="flex items-center gap-2 text-[12px] text-neutral-400">
+        <Loader2 size={14} className="animate-spin text-neutral-300" />
+        {t("Unpacking and verifying signature…")}
       </div>
     );
   }
@@ -132,11 +135,11 @@ function Body({ status }: { status: ChromiumStatus }): JSX.Element {
             className="absolute inset-y-0 left-0 transition-[width] duration-200"
             style={{
               width: `${pct}%`,
-              background: "linear-gradient(90deg, #6366f1, #a855f7, #ec4899)",
+              background: "linear-gradient(90deg, #f5f5f5, #e5e5e5, #a3a3a3)",
             }}
           />
         </div>
-        <div className="flex items-center justify-between text-[11px] mono text-slate-400">
+        <div className="flex items-center justify-between text-[11px] mono text-neutral-400">
           <span>
             {formatMB(status.bytesReceived)} / {formatMB(status.bytesTotal)}
           </span>
@@ -148,9 +151,9 @@ function Body({ status }: { status: ChromiumStatus }): JSX.Element {
 
   if (status.kind === "verifying") {
     return (
-      <div className="flex items-center gap-2 text-[12px] text-slate-400">
-        <Loader2 size={14} className="animate-spin text-purple-400" />
-        Verifying SHA-256 checksum…
+      <div className="flex items-center gap-2 text-[12px] text-neutral-400">
+        <Loader2 size={14} className="animate-spin text-neutral-300" />
+        {t("Verifying SHA-256 checksum…")}
       </div>
     );
   }
@@ -185,7 +188,7 @@ function Body({ status }: { status: ChromiumStatus }): JSX.Element {
           leftIcon={<Download size={14} strokeWidth={1.5} />}
           onClick={() => void window.multizen.chromium.retry()}
         >
-          Retry download
+          {t("Retry download")}
         </Button>
       </>
     );

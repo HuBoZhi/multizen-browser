@@ -44,6 +44,7 @@ import { probeProxyGeo, type ProxyGeoResult } from "./proxyGeo.ts";
 import { initInstanceConfig, resolveMcpPort, sharedEngineRoot } from "./instanceConfig.ts";
 import { withEngineInstallLock } from "./engineInstallLock.ts";
 import { clampWindowState, placementBounds, type WindowState } from "./windowState.ts";
+import { setUiLang, tt } from "./uiLang.ts";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
@@ -412,11 +413,14 @@ app.whenReady().then(async () => {
         const profile = profileManager.get(profileId);
         const choice = await dialog.showMessageBox(mainWindow!, {
           type: "question",
-          buttons: ["Add to MultiZen", "Cancel"],
+          buttons: [tt("Add to MultiZen", "添加到 MultiZen"), tt("Cancel", "取消")],
           defaultId: 0,
           cancelId: 1,
-          message: "Add this extension to the profile?",
-          detail: `Extension ${extensionId} will be installed into "${profile?.name ?? profileId}" and load on the next launch.`,
+          message: tt("Add this extension to the profile?", "将该扩展添加到配置？"),
+          detail: tt(
+            `Extension ${extensionId} will be installed into "${profile?.name ?? profileId}" and load on the next launch.`,
+            `扩展 ${extensionId} 将安装到“${profile?.name ?? profileId}”，并在下次启动时加载。`,
+          ),
         });
         if (choice.response !== 0) return;
         try {
@@ -663,7 +667,7 @@ app.whenReady().then(async () => {
   );
   ipcMain.handle("extensions:addFromFile", async (_e, profileId: string) => {
     const r = await dialog.showOpenDialog(mainWindow!, {
-      title: "Add extension (.crx or .zip)",
+      title: tt("Add extension (.crx or .zip)", "添加扩展（.crx 或 .zip）"),
       properties: ["openFile"],
       filters: [{ name: "Chrome extension", extensions: ["crx", "zip"] }],
     });
@@ -673,7 +677,7 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle("extensions:addFromFolder", async (_e, profileId: string) => {
     const r = await dialog.showOpenDialog(mainWindow!, {
-      title: "Add unpacked extension folder",
+      title: tt("Add unpacked extension folder", "添加未打包的扩展文件夹"),
       properties: ["openDirectory"],
     });
     if (r.canceled || !r.filePaths[0]) return extensionsService.list(profileId);
@@ -750,7 +754,7 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle("extensions:prepareFromFile", async () => {
     const r = await dialog.showOpenDialog(mainWindow!, {
-      title: "Add extension (.crx or .zip)",
+      title: tt("Add extension (.crx or .zip)", "添加扩展（.crx 或 .zip）"),
       properties: ["openFile"],
       filters: [{ name: "Chrome extension", extensions: ["crx", "zip"] }],
     });
@@ -759,7 +763,7 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle("extensions:prepareFromFolder", async () => {
     const r = await dialog.showOpenDialog(mainWindow!, {
-      title: "Add unpacked extension folder",
+      title: tt("Add unpacked extension folder", "添加未打包的扩展文件夹"),
       properties: ["openDirectory"],
     });
     if (r.canceled || !r.filePaths[0]) return null;
@@ -846,7 +850,7 @@ app.whenReady().then(async () => {
       const profile = profileManager.get(id);
       if (!profile) return { ok: false, reason: "not_found" };
       const result = await dialog.showSaveDialog(mainWindow ?? undefined!, {
-        title: "Export profile",
+        title: tt("Export profile", "导出配置"),
         defaultPath: `${profile.name.replace(/[^a-z0-9-_]+/gi, "_")}.mzar`,
         filters: [{ name: "MultiZen archive", extensions: ["mzar"] }],
       });
@@ -869,7 +873,7 @@ app.whenReady().then(async () => {
     "profiles:import",
     async (_e, passphrase: string): Promise<{ ok: true; id: string } | { ok: false; reason: string }> => {
       const result = await dialog.showOpenDialog(mainWindow ?? undefined!, {
-        title: "Import profile",
+        title: tt("Import profile", "导入配置"),
         filters: [{ name: "MultiZen archive", extensions: ["mzar"] }],
         properties: ["openFile"],
       });
@@ -900,6 +904,10 @@ app.whenReady().then(async () => {
       }
     },
   );
+
+  // Renderer pushes its UI language so native dialogs follow the user's
+  // in-app language choice (see uiLang.ts).
+  ipcMain.on("ui:lang", (_e, lang: unknown) => setUiLang(lang));
 
   // System info
   ipcMain.handle("system:info", () => ({

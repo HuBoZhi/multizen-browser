@@ -1,4 +1,5 @@
 import type { JSX } from "react";
+import { useI18n } from "../../lib/i18n";
 
 /**
  * Browser start-page control, shared by the create and edit sheets.
@@ -23,22 +24,25 @@ export function BrowserSection({
   startUrl: string;
   onStartUrl: (v: string) => void;
 }): JSX.Element {
+  const { t } = useI18n();
   return (
     <div className="space-y-2.5">
-      <SectionField label="Start page">
+      <SectionField label={t("Start page")}>
         <input
           type="text"
           value={startUrl}
           onChange={(e) => onStartUrl(e.target.value)}
           placeholder={DEFAULT_START_URL}
-          className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 outline-none placeholder:text-slate-400"
+          className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-neutral-200 outline-none placeholder:text-neutral-400"
           style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)" }}
         />
       </SectionField>
 
-      <p className="text-[10px] text-slate-400 leading-relaxed">
-        Opens on a profile's first launch (later launches restore your tabs). Leave the default
-        or set your own — any http(s) URL, or <code className="text-slate-400">about:blank</code>.
+      <p className="text-[10px] text-neutral-400 leading-relaxed">
+        {t(
+          "Opens on a profile's first launch (later launches restore your tabs). Leave the default or set your own — any http(s) URL, or",
+        )}{" "}
+        <code className="text-neutral-400">about:blank</code>.
       </p>
     </div>
   );
@@ -47,7 +51,7 @@ export function BrowserSection({
 function SectionField({ label, children }: { label: string; children: React.ReactNode }): JSX.Element {
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="text-[11px] font-medium text-slate-400">{label}</div>
+      <div className="text-[11px] font-medium text-neutral-400">{label}</div>
       {children}
     </div>
   );

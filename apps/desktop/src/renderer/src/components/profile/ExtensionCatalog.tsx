@@ -5,6 +5,7 @@ import {
   CATALOG_EXTENSIONS,
   type CatalogExtension,
 } from "../../data/extensionCatalog";
+import { useI18n } from "../../lib/i18n";
 import { ExtIcon } from "./ExtIcon";
 
 /**
@@ -24,6 +25,7 @@ export function ExtensionCatalog({
   busyId: string | null;
   onInstall: (ext: CatalogExtension) => void;
 }): JSX.Element {
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
 
   const groups = useMemo(() => {
@@ -38,9 +40,10 @@ export function ExtensionCatalog({
 
   if (CATALOG_EXTENSIONS.length === 0) {
     return (
-      <div className="text-[11px] text-slate-400 leading-relaxed px-1 py-2">
-        The extension catalog is empty in this build. Add extensions by Chrome Web Store URL or
-        ID above.
+      <div className="text-[11px] text-neutral-400 leading-relaxed px-1 py-2">
+        {t(
+          "The extension catalog is empty in this build. Add extensions by Chrome Web Store URL or ID above.",
+        )}
       </div>
     );
   }
@@ -50,22 +53,22 @@ export function ExtensionCatalog({
       <div className="flex items-center gap-2 px-2.5 h-9 rounded-lg bg-white/[0.03]"
         style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)" }}
       >
-        <Search size={13} className="text-slate-400 shrink-0" />
+        <Search size={13} className="text-neutral-400 shrink-0" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search the catalog…"
-          className="flex-1 bg-transparent text-[12px] text-slate-200 placeholder:text-slate-400 outline-none"
+          placeholder={t("Search the catalog…")}
+          className="flex-1 bg-transparent text-[12px] text-neutral-200 placeholder:text-neutral-400 outline-none"
         />
       </div>
 
       {groups.length === 0 ? (
-        <div className="text-[11px] text-slate-400 px-1 py-2">No matches.</div>
+        <div className="text-[11px] text-neutral-400 px-1 py-2">{t("No matches.")}</div>
       ) : (
         <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
           {groups.map(({ cat, items }) => (
             <div key={cat.id} className="space-y-1.5">
-              <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">
+              <div className="text-[10px] uppercase tracking-wider font-semibold text-neutral-400">
                 {cat.label}
               </div>
               {items.map((ext) => {
@@ -82,8 +85,8 @@ export function ExtensionCatalog({
                   >
                     <ExtIcon id={ext.id} />
                     <div className="flex-1 min-w-0">
-                      <div className="text-[12px] text-slate-200 truncate">{ext.name}</div>
-                      <div className="text-[11px] text-slate-400 truncate">{ext.description}</div>
+                      <div className="text-[12px] text-neutral-200 truncate">{ext.name}</div>
+                      <div className="text-[11px] text-neutral-400 truncate">{ext.description}</div>
                     </div>
                     <button
                       type="button"
@@ -93,15 +96,15 @@ export function ExtensionCatalog({
                     >
                       {added ? (
                         <>
-                          <Check size={11} /> Added
+                          <Check size={11} /> {t("Added")}
                         </>
                       ) : busy ? (
                         <>
-                          <Loader2 size={11} className="animate-spin" /> Adding
+                          <Loader2 size={11} className="animate-spin" /> {t("Adding")}
                         </>
                       ) : (
                         <>
-                          <Plus size={11} /> Add
+                          <Plus size={11} /> {t("Add")}
                         </>
                       )}
                     </button>

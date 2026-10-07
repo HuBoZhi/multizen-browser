@@ -4,6 +4,7 @@ import type { ActivityEvent, ProfileSummary } from "../../types";
 import type { RunInfo } from "@multizen/types";
 import { Pill, Flag, ccFromTimezone } from "../atoms";
 import { formatTime } from "../../lib/relativeTime";
+import { useI18n } from "../../lib/i18n";
 
 interface Props {
   events: ActivityEvent[];
@@ -24,6 +25,7 @@ interface Props {
  * config); bottom half = the live feed of MCP tool calls.
  */
 export function McpPanel({ events, profiles, runs, mcpUrl, mcpToken, instanceId }: Props): JSX.Element {
+  const { t } = useI18n();
   const profilesById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
   const recent = useMemo(() => events.slice().reverse(), [events]);
 
@@ -31,22 +33,22 @@ export function McpPanel({ events, profiles, runs, mcpUrl, mcpToken, instanceId 
     <div className="flex-1 overflow-auto" style={{ padding: "24px 32px" }}>
       <div className="max-w-[960px] mx-auto">
         <div className="flex items-baseline gap-3 mb-1.5">
-          <div className="text-lg font-bold tracking-tight text-slate-100">MCP</div>
-          <div className="mono text-[11px] text-slate-400">·  {events.length} calls</div>
+          <div className="text-lg font-bold tracking-tight text-neutral-100">MCP</div>
+          <div className="mono text-[11px] text-neutral-400">{t("·  {count} calls", { count: events.length })}</div>
           {instanceId && (
             <span
-              className="mono text-[10px] px-2 py-0.5 rounded-md text-purple-300"
-              style={{ background: "rgba(168,85,247,0.10)", boxShadow: "inset 0 0 0 1px rgba(168,85,247,0.20)" }}
-              title="This app runs as a named multi-instance; this endpoint controls only this instance."
+              className="mono text-[10px] px-2 py-0.5 rounded-md text-neutral-200"
+              style={{ background: "rgba(255,255,255,0.10)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.20)" }}
+              title={t("This app runs as a named multi-instance; this endpoint controls only this instance.")}
             >
-              instance: {instanceId}
+              {t("instance: {id}", { id: instanceId })}
             </span>
           )}
         </div>
-        <div className="text-[13px] text-slate-400 mb-5 leading-relaxed max-w-[68ch]">
-          Drive your profiles from an AI agent. Point any MCP client (Claude Desktop, Cursor,
-          Cline, …) at MultiZen, then launch a profile and let the agent open tabs, click, type,
-          and read pages through it — every tool call streams into the feed below.
+        <div className="text-[13px] text-neutral-400 mb-5 leading-relaxed max-w-[68ch]">
+          {t(
+            "Drive your profiles from an AI agent. Point any MCP client (Claude Desktop, Cursor, Cline, …) at MultiZen, then launch a profile and let the agent open tabs, click, type, and read pages through it — every tool call streams into the feed below.",
+          )}
         </div>
 
         <ConnectCard baseUrl={mcpUrl} token={mcpToken} />
@@ -55,8 +57,8 @@ export function McpPanel({ events, profiles, runs, mcpUrl, mcpToken, instanceId 
 
         {/* Live feed */}
         <div className="flex items-baseline gap-2.5 mt-7 mb-2.5">
-          <div className="text-[13px] font-semibold text-slate-200">Live tool calls</div>
-          <div className="mono text-[10px] text-slate-400">{events.length} total</div>
+          <div className="text-[13px] font-semibold text-neutral-200">{t("Live tool calls")}</div>
+          <div className="mono text-[10px] text-neutral-400">{t("{count} total", { count: events.length })}</div>
         </div>
 
         {recent.length === 0 ? (
@@ -69,10 +71,11 @@ export function McpPanel({ events, profiles, runs, mcpUrl, mcpToken, instanceId 
               boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17)",
             }}
           >
-            <div className="text-[13px] font-semibold text-slate-100">No agent calls yet</div>
-            <div className="text-[12px] text-slate-400 mt-1.5 leading-relaxed max-w-[46ch] mx-auto">
-              Connect a client above, launch a profile, and every MCP tool call the agent makes
-              shows up here — with sanitized arguments, outcome, and duration.
+            <div className="text-[13px] font-semibold text-neutral-100">{t("No agent calls yet")}</div>
+            <div className="text-[12px] text-neutral-400 mt-1.5 leading-relaxed max-w-[46ch] mx-auto">
+              {t(
+                "Connect a client above, launch a profile, and every MCP tool call the agent makes shows up here — with sanitized arguments, outcome, and duration.",
+              )}
             </div>
           </div>
         ) : (
@@ -99,6 +102,7 @@ function ConnectCard({
   baseUrl: string | null;
   token: string | null;
 }): JSX.Element {
+  const { t } = useI18n();
   const off = baseUrl === null;
   const base = (baseUrl ?? "http://127.0.0.1:7777").replace(/\/$/, "");
   const httpUrl = `${base}/mcp`; // Streamable HTTP — the current MCP transport
@@ -182,95 +186,96 @@ function ConnectCard({
             width: 30,
             height: 30,
             borderRadius: 9,
-            background: "rgba(168,85,247,0.12)",
-            color: "#c084fc",
-            boxShadow: "inset 0 0 0 1px rgba(168,85,247,0.22)",
+            background: "rgba(255,255,255,0.12)",
+            color: "#e5e5e5",
+            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.22)",
           }}
         >
           <Plug size={15} strokeWidth={1.75} />
         </div>
-        <div className="text-[13px] font-semibold text-slate-100">Connect an agent</div>
+        <div className="text-[13px] font-semibold text-neutral-100">{t("Connect an agent")}</div>
         <div className="ml-auto flex items-center gap-2">
           {!off && <CopyPromptButton prompt={llmPrompt} />}
           {off ? (
-            <Pill kind="idle">server off</Pill>
+            <Pill kind="idle">{t("server off")}</Pill>
           ) : (
-            <Pill kind="running" dot>listening</Pill>
+            <Pill kind="running" dot>{t("listening")}</Pill>
           )}
         </div>
       </div>
 
       {off ? (
-        <div className="text-[12px] text-slate-400 leading-relaxed">
-          The MCP server is disabled. Turn on{" "}
-          <span className="text-slate-200 font-medium">Auto-start MCP HTTP transport</span> in{" "}
-          <span className="text-slate-200 font-medium">Settings</span> to get a connection
-          endpoint.
+        <div className="text-[12px] text-neutral-400 leading-relaxed">
+          {t("The MCP server is disabled. Turn on")}{" "}
+          <span className="text-neutral-200 font-medium">{t("Auto-start MCP HTTP transport")}</span>{" "}
+          {t("in")}{" "}
+          <span className="text-neutral-200 font-medium">{t("Settings")}</span>{" "}
+          {t("to get a connection endpoint.")}
         </div>
       ) : (
         <>
           {/* Endpoint — Streamable HTTP is the current transport */}
-          <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1.5">
-            Endpoint (Streamable HTTP)
+          <div className="text-[10px] uppercase tracking-wider font-semibold text-neutral-400 mb-1.5">
+            {t("Endpoint (Streamable HTTP)")}
           </div>
           <CopyRow value={httpUrl} mono />
-          <div className="mt-1.5 text-[11px] text-slate-400 leading-relaxed">
-            Legacy HTTP+SSE endpoint (older clients):{" "}
-            <code className="mono text-slate-400">{sseUrl}</code>
+          <div className="mt-1.5 text-[11px] text-neutral-400 leading-relaxed">
+            {t("Legacy HTTP+SSE endpoint (older clients):")}{" "}
+            <code className="mono text-neutral-400">{sseUrl}</code>
           </div>
 
           {/* Auth token — every request needs it; each config below embeds it. */}
-          <div className="mt-3 text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1.5">
-            Auth token
+          <div className="mt-3 text-[10px] uppercase tracking-wider font-semibold text-neutral-400 mb-1.5">
+            {t("Auth token")}
           </div>
           <CopyRow value={bearer} mono />
-          <div className="mt-1.5 text-[11px] text-slate-400 leading-relaxed">
-            Sent as <code className="mono text-slate-400">Authorization: Bearer …</code> — the
-            configs below already include it. Keep it secret; anyone with it can drive your
-            profiles.
+          <div className="mt-1.5 text-[11px] text-neutral-400 leading-relaxed">
+            {t("Sent as")} <code className="mono text-neutral-400">Authorization: Bearer …</code>{" "}
+            {t("— the configs below already include it. Keep it secret; anyone with it can drive your profiles.")}
           </div>
 
           {/* Steps */}
           <ol className="mt-4 space-y-2">
-            <Step n={1}>Copy the config for your client below into its MCP config.</Step>
-            <Step n={2}>Reload / restart the client so it connects.</Step>
-            <Step n={3}>Launch a profile here, and let the agent drive it.</Step>
+            <Step n={1}>{t("Copy the config for your client below into its MCP config.")}</Step>
+            <Step n={2}>{t("Reload / restart the client so it connects.")}</Step>
+            <Step n={3}>{t("Launch a profile here, and let the agent drive it.")}</Step>
           </ol>
 
           {/* Config snippets — three shapes by client type */}
           <div className="mt-4 space-y-3">
             <div>
-              <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1.5">
-                Codex CLI — ~/.codex/config.toml
+              <div className="text-[10px] uppercase tracking-wider font-semibold text-neutral-400 mb-1.5">
+                {t("Codex CLI — ~/.codex/config.toml")}
               </div>
               <CopyRow value={codexConfig} mono block />
-              <div className="flex items-start gap-1.5 mt-2 text-[11px] text-slate-400 leading-relaxed">
-                <Terminal size={12} className="mt-[2px] flex-shrink-0 text-slate-400" />
+              <div className="flex items-start gap-1.5 mt-2 text-[11px] text-neutral-400 leading-relaxed">
+                <Terminal size={12} className="mt-[2px] flex-shrink-0 text-neutral-400" />
                 <span>
-                  The <code className="text-slate-400">url</code> field needs a Codex build with
-                  streamable-HTTP MCP support. On older Codex (stdio only), use the{" "}
-                  <span className="text-slate-400">Stdio clients</span> config below instead.
+                  {t("The")} <code className="text-neutral-400">url</code>{" "}
+                  {t("field needs a Codex build with streamable-HTTP MCP support. On older Codex (stdio only), use the")}{" "}
+                  <span className="text-neutral-400">{t("Stdio clients")}</span> {t("config below instead.")}
                 </span>
               </div>
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1.5">
-                JSON URL clients — Cursor, Cline, Continue
+              <div className="text-[10px] uppercase tracking-wider font-semibold text-neutral-400 mb-1.5">
+                {t("JSON URL clients — Cursor, Cline, Continue")}
               </div>
               <CopyRow value={jsonConfig} mono block />
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1.5">
-                Stdio clients — Claude Desktop
+              <div className="text-[10px] uppercase tracking-wider font-semibold text-neutral-400 mb-1.5">
+                {t("Stdio clients — Claude Desktop")}
               </div>
               <CopyRow value={stdioConfig} mono block />
-              <div className="flex items-start gap-1.5 mt-2 text-[11px] text-slate-400 leading-relaxed">
-                <Terminal size={12} className="mt-[2px] flex-shrink-0 text-slate-400" />
+              <div className="flex items-start gap-1.5 mt-2 text-[11px] text-neutral-400 leading-relaxed">
+                <Terminal size={12} className="mt-[2px] flex-shrink-0 text-neutral-400" />
                 <span>
-                  Claude Desktop&apos;s config has no <code className="text-slate-400">url</code>{" "}
-                  field, so it bridges the endpoint through{" "}
-                  <code className="text-slate-400">mcp-remote</code> (needs Node). Change the port
-                  in <span className="text-slate-400">Settings</span>.
+                  {t("Claude Desktop's config has no")} <code className="text-neutral-400">url</code>{" "}
+                  {t("field, so it bridges the endpoint through")}{" "}
+                  <code className="text-neutral-400">mcp-remote</code>{" "}
+                  {t("(needs Node). Change the port in")}{" "}
+                  <span className="text-neutral-400">{t("Settings")}</span>.
                 </span>
               </div>
             </div>
@@ -283,7 +288,7 @@ function ConnectCard({
 
 function Step({ n, children }: { n: number; children: React.ReactNode }): JSX.Element {
   return (
-    <li className="flex items-start gap-2.5 text-[12px] text-slate-300 leading-relaxed">
+    <li className="flex items-start gap-2.5 text-[12px] text-neutral-300 leading-relaxed">
       <span
         className="flex-shrink-0 flex items-center justify-center mono text-[10px] font-semibold"
         style={{
@@ -293,7 +298,7 @@ function Step({ n, children }: { n: number; children: React.ReactNode }): JSX.El
           marginTop: 1,
           background: "rgba(255,255,255,0.05)",
           boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)",
-          color: "#94a3b8",
+          color: "#a3a3a3",
         }}
       >
         {n}
@@ -312,6 +317,7 @@ function CopyRow({
   mono?: boolean;
   block?: boolean;
 }): JSX.Element {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   function copy(): void {
     navigator.clipboard
@@ -342,7 +348,7 @@ function CopyRow({
           margin: 0,
           fontSize: block ? 11 : 12,
           lineHeight: 1.5,
-          color: "#cbd5e1",
+          color: "#d4d4d4",
           whiteSpace: block ? "pre" : "nowrap",
           overflowX: "auto",
         }}
@@ -352,7 +358,7 @@ function CopyRow({
       <button
         type="button"
         onClick={copy}
-        title="Copy"
+        title={t("Copy")}
         className="flex-shrink-0 flex items-center justify-center transition-colors"
         style={{
           width: 28,
@@ -362,7 +368,7 @@ function CopyRow({
           boxShadow: copied
             ? "inset 0 0 0 1px rgba(16,185,129,0.3)"
             : "inset 0 0 0 1px rgba(255,255,255,0.15)",
-          color: copied ? "#6ee7b7" : "#94a3b8",
+          color: copied ? "#6ee7b7" : "#a3a3a3",
         }}
       >
         {copied ? <Check size={13} /> : <Copy size={13} />}
@@ -377,6 +383,7 @@ function CopyRow({
  * editing config files by hand.
  */
 function CopyPromptButton({ prompt }: { prompt: string }): JSX.Element {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   function copy(): void {
     navigator.clipboard
@@ -393,7 +400,7 @@ function CopyPromptButton({ prompt }: { prompt: string }): JSX.Element {
     <button
       type="button"
       onClick={copy}
-      title="Copy a prompt you can paste into Claude Code / Cursor to set up the connection"
+      title={t("Copy a prompt you can paste into Claude Code / Cursor to set up the connection")}
       className="flex items-center gap-1.5 transition-colors"
       style={{
         height: 26,
@@ -401,15 +408,15 @@ function CopyPromptButton({ prompt }: { prompt: string }): JSX.Element {
         borderRadius: 8,
         fontSize: 11,
         fontWeight: 600,
-        background: copied ? "rgba(16,185,129,0.14)" : "rgba(168,85,247,0.12)",
+        background: copied ? "rgba(16,185,129,0.14)" : "rgba(255,255,255,0.12)",
         boxShadow: copied
           ? "inset 0 0 0 1px rgba(16,185,129,0.3)"
-          : "inset 0 0 0 1px rgba(168,85,247,0.24)",
-        color: copied ? "#6ee7b7" : "#c084fc",
+          : "inset 0 0 0 1px rgba(255,255,255,0.24)",
+        color: copied ? "#6ee7b7" : "#e5e5e5",
       }}
     >
       {copied ? <Check size={12} /> : <Sparkles size={12} />}
-      {copied ? "Copied" : "Copy for LLM"}
+      {copied ? t("Copied") : t("Copy for LLM")}
     </button>
   );
 }
@@ -432,26 +439,26 @@ function PageRow({
       style={{
         padding: "12px 18px",
         borderBottom: isLast ? "none" : "1px solid rgba(255,255,255,0.04)",
-        background: event.status === "pending" ? "rgba(168,85,247,0.04)" : undefined,
+        background: event.status === "pending" ? "rgba(255,255,255,0.04)" : undefined,
       }}
     >
       <StatusPill status={event.status} />
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
-          <code className="mono text-[12px] font-semibold text-slate-100">
-            <span className="text-purple-400">multizen.</span>
+          <code className="mono text-[12px] font-semibold text-neutral-100">
+            <span className="text-neutral-300">multizen.</span>
             {event.tool}
           </code>
-          <span className="ml-auto mono text-[10px] text-slate-400">
+          <span className="ml-auto mono text-[10px] text-neutral-400">
             {formatTime(event.timestamp)}
             {event.durationMs !== undefined && ` · ${event.durationMs}ms`}
           </span>
         </div>
         {event.summary && (
-          <div className="text-[12px] text-slate-400 mt-0.5 truncate">{event.summary}</div>
+          <div className="text-[12px] text-neutral-400 mt-0.5 truncate">{event.summary}</div>
         )}
         {profile && (
-          <div className="mono text-[10px] text-slate-400 mt-1 flex items-center gap-1.5">
+          <div className="mono text-[10px] text-neutral-400 mt-1 flex items-center gap-1.5">
             <Flag cc={cc} />
             {profile.name} · {profile.id.slice(0, 12)}
           </div>
@@ -462,9 +469,10 @@ function PageRow({
 }
 
 function StatusPill({ status }: { status: ActivityEvent["status"] }): JSX.Element {
-  if (status === "ok") return <Pill kind="running">ok</Pill>;
-  if (status === "pending") return <Pill kind="ai" dot>live</Pill>;
-  return <Pill kind="error">error</Pill>;
+  const { t } = useI18n();
+  if (status === "ok") return <Pill kind="running">{t("ok")}</Pill>;
+  if (status === "pending") return <Pill kind="ai" dot>{t("live")}</Pill>;
+  return <Pill kind="error">{t("error")}</Pill>;
 }
 
 /**
@@ -473,6 +481,7 @@ function StatusPill({ status }: { status: ActivityEvent["status"] }): JSX.Elemen
  * browser while another agent drives a sibling instance of the same profile.
  */
 function RunsCard({ runs }: { runs: RunInfo[] }): JSX.Element {
+  const { t } = useI18n();
   return (
     <div
       className="mt-4"
@@ -498,15 +507,14 @@ function RunsCard({ runs }: { runs: RunInfo[] }): JSX.Element {
           <Plug size={15} />
         </div>
         <div>
-          <div className="text-[13px] font-semibold text-slate-100">
-            Running browser instances
+          <div className="text-[13px] font-semibold text-neutral-100">
+            {t("Running browser instances")}
           </div>
-          <div className="text-[11px] text-slate-400">
-            Each instance has its own MCP endpoint — point an agent at one to drive exactly that
-            browser.
+          <div className="text-[11px] text-neutral-400">
+            {t("Each instance has its own MCP endpoint — point an agent at one to drive exactly that browser.")}
           </div>
         </div>
-        <span className="mono text-[10px] text-slate-400 ml-auto">{runs.length} live</span>
+        <span className="mono text-[10px] text-neutral-400 ml-auto">{t("{count} live", { count: runs.length })}</span>
       </div>
       <div className="space-y-3">
         {runs.map((r) => (
@@ -520,20 +528,20 @@ function RunsCard({ runs }: { runs: RunInfo[] }): JSX.Element {
             }}
           >
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-[12px] font-semibold text-slate-200 truncate">
+              <span className="text-[12px] font-semibold text-neutral-200 truncate">
                 {r.profileName ?? r.profileId}
               </span>
               {r.ephemeral && (
                 <span
                   className="mono text-[9px] px-1.5 py-0.5 rounded text-amber-300"
                   style={{ background: "rgba(245,158,11,0.10)" }}
-                  title="This instance runs on a disposable working copy — changes are discarded when it closes."
+                  title={t("This instance runs on a disposable working copy — changes are discarded when it closes.")}
                 >
-                  ephemeral
+                  {t("ephemeral")}
                 </span>
               )}
-              <span className="mono text-[10px] text-slate-400 ml-auto truncate">
-                run {r.runId.slice(-6)} · since {formatTime(r.startedAt)}
+              <span className="mono text-[10px] text-neutral-400 ml-auto truncate">
+                {t("run {id} · since {time}", { id: r.runId.slice(-6), time: formatTime(r.startedAt) })}
               </span>
             </div>
             <div className="space-y-1.5">

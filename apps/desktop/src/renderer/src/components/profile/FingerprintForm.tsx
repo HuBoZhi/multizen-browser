@@ -7,6 +7,7 @@ import type {
   ProxyConfig,
   ProxyGeoResult,
 } from "../../types";
+import { useI18n } from "../../lib/i18n";
 
 /**
  * Coherent fingerprint editor — shared between NewProfileSheet and
@@ -30,6 +31,7 @@ interface Props {
 }
 
 export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.Element {
+  const { t } = useI18n();
   const [devices, setDevices] = useState<ReadonlyArray<DeviceCatalogEntry>>([]);
   const [locales, setLocales] = useState<ReadonlyArray<LocaleCatalogEntry>>([]);
   const [detecting, setDetecting] = useState(false);
@@ -82,15 +84,16 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
       );
       if (!localeId) {
         setDetectError(
-          `Proxy is in ${result.geo.countryName} (${result.geo.country}) — no locale preset matches. Pick a locale manually below.`,
+          t(
+            "Proxy is in {name} ({code}) — no locale preset matches. Pick a locale manually below.",
+            { name: result.geo.countryName, code: result.geo.country },
+          ),
         );
         return;
       }
       const match = locales.find((l) => l.id === localeId);
       if (!match) {
-        setDetectError(
-          `Locale ${localeId} not in catalog. Pick one manually.`,
-        );
+        setDetectError(t("Locale {id} not in catalog. Pick one manually.", { id: localeId }));
         return;
       }
       // Use the detected timezone if it's in the locale's allowed list,
@@ -120,37 +123,37 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
         <button
           type="button"
           onClick={() => void regen()}
-          className="flex-1 inline-flex items-center justify-center gap-1.5 h-8 text-[12px] font-medium text-purple-200 hover:text-white transition-colors rounded-lg"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 h-8 text-[12px] font-medium text-neutral-100 hover:text-white transition-colors rounded-lg"
           style={{
             background:
-              "linear-gradient(180deg, rgba(168,85,247,0.18), rgba(168,85,247,0.10))",
+              "linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.10))",
             boxShadow:
-              "inset 0 0 0 1px rgba(168,85,247,0.35), 0 1px 0 rgba(255,255,255,0.05)",
+              "inset 0 0 0 1px rgba(255,255,255,0.35), 0 1px 0 rgba(255,255,255,0.05)",
           }}
-          title="Generate a new coherent device + locale + screen + UA"
+          title={t("Generate a new coherent device + locale + screen + UA")}
         >
           <RefreshCw size={12} strokeWidth={2.25} />
-          Regenerate fingerprint
+          {t("Regenerate fingerprint")}
         </button>
         {proxy && proxy.host && (
           <button
             type="button"
             onClick={() => void detectFromProxy()}
             disabled={detecting}
-            className="inline-flex items-center gap-1.5 h-8 px-3 text-[12px] font-medium text-slate-300 hover:text-slate-100 transition-colors rounded-lg disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 h-8 px-3 text-[12px] font-medium text-neutral-300 hover:text-neutral-100 transition-colors rounded-lg disabled:opacity-50"
             style={{
               background: "rgba(255,255,255,0.03)",
               boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)",
             }}
-            title="Probe the proxy and align locale/timezone with its geo"
+            title={t("Probe the proxy and align locale/timezone with its geo")}
           >
             <MapPin size={12} strokeWidth={2} />
-            {detecting ? "Detecting…" : "Match proxy"}
+            {detecting ? t("Detecting…") : t("Match proxy")}
           </button>
         )}
       </div>
 
-      <Field label="Device">
+      <Field label={t("Device")}>
         <Select
           value={fingerprint.device}
           onChange={(v) => void reconcile({ device: v as never })}
@@ -158,7 +161,7 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
         />
       </Field>
 
-      <Field label="Locale">
+      <Field label={t("Locale")}>
         <Select
           value={currentLocale?.id ?? fingerprint.locale}
           onChange={(v) => void reconcile({ localeId: v })}
@@ -166,7 +169,7 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
         />
       </Field>
 
-      <Field label="Timezone">
+      <Field label={t("Timezone")}>
         <Select
           value={fingerprint.timezone}
           onChange={(v) => void reconcile({ timezone: v })}
@@ -176,7 +179,7 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
         />
       </Field>
 
-      <Field label="Screen size">
+      <Field label={t("Screen size")}>
         <Select
           value={`${fingerprint.screen.width}×${fingerprint.screen.height}`}
           onChange={(v) => {
@@ -202,15 +205,15 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
       {/* Computed-UA preview — read-only. This is the result of the
           choices above, not a user input. */}
       <div
-        className="px-2.5 py-2 rounded-lg text-[10px] mono text-slate-400 leading-relaxed truncate"
+        className="px-2.5 py-2 rounded-lg text-[10px] mono text-neutral-400 leading-relaxed truncate"
         style={{
           background: "rgba(255,255,255,0.055)",
           boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17)",
         }}
         title={fingerprint.userAgent}
       >
-        <span className="text-slate-400">UA · </span>
-        {shortUA(fingerprint.userAgent)}
+        <span className="text-neutral-400">UA · </span>
+        {t(shortUA(fingerprint.userAgent))}
       </div>
 
       {/* Proxy-coherence warnings */}
@@ -236,11 +239,11 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
         >
           <AlertTriangle size={12} className="mt-0.5 flex-shrink-0" />
           <span>
-            Locale country is{" "}
+            {t("Locale country is")}{" "}
             <strong className="text-amber-200 uppercase">{fingerprint.country}</strong>{" "}
-            but proxy IP is in{" "}
+            {t("but proxy IP is in")}{" "}
             <strong className="text-amber-200 uppercase">{detected.country}</strong>
-            {" — anti-bot systems flag this. Pick a matching locale or proxy."}
+            {t(" — anti-bot systems flag this. Pick a matching locale or proxy.")}
           </span>
         </div>
       )}
@@ -254,12 +257,12 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
         >
           <MapPin size={12} className="mt-0.5 flex-shrink-0" />
           <span>
-            Coherent: proxy resolves to{" "}
+            {t("Coherent: proxy resolves to")}{" "}
             <strong className="text-emerald-200">
               {detected.city ? `${detected.city}, ` : ""}
               {detected.countryName}
             </strong>{" "}
-            ({detected.ip}) — matches locale.
+            {t("({ip}) — matches locale.", { ip: detected.ip })}
           </span>
         </div>
       )}
@@ -279,7 +282,7 @@ function Field({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
-        <div className="text-[11px] font-medium text-slate-400">{label}</div>
+        <div className="text-[11px] font-medium text-neutral-400">{label}</div>
         {right && (
           <>
             <div className="flex-1" />
@@ -305,7 +308,7 @@ function Select({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 outline-none cursor-pointer focus:bg-white/[0.05] transition-colors"
+      className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-neutral-200 outline-none cursor-pointer focus:bg-white/[0.05] transition-colors"
       style={{
         boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)",
         fontFamily: "var(--font-mono)",
@@ -322,7 +325,7 @@ function Select({
         <option
           key={o.value}
           value={o.value}
-          style={{ background: "#12131a", color: "#e2e8f0" }}
+          style={{ background: "#1a1a1a", color: "#e5e5e5" }}
         >
           {o.label}
         </option>

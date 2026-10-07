@@ -7,6 +7,7 @@ import { ProfileTile, deriveTileState, type TileData, type TileState } from "./P
 import { ProfileTable } from "./ProfileTable";
 import { usePersistedState } from "../../lib/persisted";
 import { cn } from "../../lib/cn";
+import { useI18n } from "../../lib/i18n";
 
 type ViewMode = "grid" | "list";
 
@@ -26,9 +27,9 @@ const FILTERS: FilterChip[] = [
 
 const DOT_COLOR: Record<TileState, string> = {
   running: "#34d399",
-  ai: "#c084fc",
+  ai: "#e5e5e5",
   error: "#f87171",
-  idle: "#94a3b8",
+  idle: "#a3a3a3",
 };
 
 interface Props {
@@ -69,6 +70,7 @@ export function Constellation({
   onDuplicate,
   onDelete,
 }: Props): JSX.Element {
+  const { t } = useI18n();
   const [filter, setFilter] = useState<FilterChip["id"]>("all");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [viewMode, setViewMode] = usePersistedState<ViewMode>("profilesView", "grid");
@@ -108,10 +110,13 @@ export function Constellation({
     <div className="flex-1 flex flex-col min-w-0 min-h-0">
       {/* Title row */}
       <div className="flex items-center gap-3.5 px-6 pt-4 pb-3">
-        <div className="text-lg font-bold tracking-tight text-slate-100">All profiles</div>
-        <div className="mono text-[11px] text-slate-400">
-          ·  {profiles.length} total · {counts.running + counts.ai} running
-          {aiCount > 0 && ` · ${aiCount} driven by Claude`}
+        <div className="text-lg font-bold tracking-tight text-neutral-100">{t("All profiles")}</div>
+        <div className="mono text-[11px] text-neutral-400">
+          {t("·  {total} total · {running} running", {
+            total: profiles.length,
+            running: counts.running + counts.ai,
+          })}
+          {aiCount > 0 && t(" · {count} driven by Claude", { count: aiCount })}
         </div>
         <div className="flex-1" />
         <div
@@ -127,13 +132,13 @@ export function Constellation({
             className={cn(
               "w-7 h-6 rounded-md flex items-center justify-center transition-colors",
               viewMode === "grid"
-                ? "text-slate-100"
-                : "text-slate-400 hover:text-slate-300",
+                ? "text-neutral-100"
+                : "text-neutral-400 hover:text-neutral-300",
             )}
             style={{
               background: viewMode === "grid" ? "rgba(255,255,255,0.06)" : undefined,
             }}
-            title="Grid view"
+            title={t("Grid view")}
           >
             <Grid3x3 size={13} strokeWidth={1.5} />
           </button>
@@ -143,13 +148,13 @@ export function Constellation({
             className={cn(
               "w-7 h-6 rounded-md flex items-center justify-center transition-colors",
               viewMode === "list"
-                ? "text-slate-100"
-                : "text-slate-400 hover:text-slate-300",
+                ? "text-neutral-100"
+                : "text-neutral-400 hover:text-neutral-300",
             )}
             style={{
               background: viewMode === "list" ? "rgba(255,255,255,0.06)" : undefined,
             }}
-            title="List view"
+            title={t("List view")}
           >
             <List size={13} strokeWidth={1.5} />
           </button>
@@ -160,7 +165,7 @@ export function Constellation({
           className="btn-brand rounded-[9px] text-[12px] px-3 py-[7px]"
         >
           <Plus size={12} strokeWidth={2} />
-          New profile
+          {t("New profile")}
           <Kbd variant="on-brand">⌘ N</Kbd>
         </button>
       </div>
@@ -176,7 +181,7 @@ export function Constellation({
               onClick={() => setFilter(c.id)}
               className={cn(
                 "flex items-center gap-1.5 px-2.5 py-[5px] rounded-lg text-[12px] font-medium transition-colors",
-                isActive ? "text-slate-100" : "text-slate-400 hover:text-slate-300",
+                isActive ? "text-neutral-100" : "text-neutral-400 hover:text-neutral-300",
               )}
               style={{
                 background: isActive ? "rgba(255,255,255,0.06)" : undefined,
@@ -189,8 +194,8 @@ export function Constellation({
                   style={{ background: DOT_COLOR[c.kind] }}
                 />
               )}
-              {c.label}
-              <span className={cn("mono text-[10px]", isActive ? "text-slate-400" : "text-slate-400")}>
+              {t(c.label)}
+              <span className={cn("mono text-[10px]", isActive ? "text-neutral-400" : "text-neutral-400")}>
                 {counts[c.id]}
               </span>
             </button>
@@ -209,12 +214,12 @@ export function Constellation({
                   onClick={() => setActiveTag(isActive ? null : t)}
                   className={cn(
                     "mz-pill mono cursor-pointer transition-colors",
-                    isActive ? "text-purple-300" : "text-slate-400 hover:text-slate-300",
+                    isActive ? "text-neutral-200" : "text-neutral-400 hover:text-neutral-300",
                   )}
                   style={{
-                    background: isActive ? "rgba(168,85,247,0.10)" : "rgba(255,255,255,0.03)",
+                    background: isActive ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.03)",
                     boxShadow: isActive
-                      ? "inset 0 0 0 1px rgba(168,85,247,0.25)"
+                      ? "inset 0 0 0 1px rgba(255,255,255,0.25)"
                       : "inset 0 0 0 1px rgba(255,255,255,0.17)",
                   }}
                 >
@@ -231,8 +236,8 @@ export function Constellation({
           (box-shadow extends ~32px outside the tile). */}
       <div className="flex-1 overflow-auto px-6 pb-6 pt-3">
         {filtered.length === 0 ? (
-          <div className="text-sm text-slate-400 py-12 text-center">
-            No profiles match the current filter.
+          <div className="text-sm text-neutral-400 py-12 text-center">
+            {t("No profiles match the current filter.")}
           </div>
         ) : viewMode === "list" ? (
           <ProfileTable

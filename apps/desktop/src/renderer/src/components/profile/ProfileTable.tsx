@@ -2,6 +2,7 @@ import type { JSX } from "react";
 import { ProfileRow } from "./ProfileRow";
 import type { RunInfo } from "@multizen/types";
 import type { TileData } from "./ProfileTile";
+import { useI18n } from "../../lib/i18n";
 
 interface Props {
   profiles: TileData[];
@@ -50,6 +51,7 @@ export function ProfileTable({
   onDuplicate,
   onDelete,
 }: Props): JSX.Element {
+  const { t } = useI18n();
   return (
     <div
       className="rounded-xl overflow-hidden"
@@ -64,7 +66,7 @@ export function ProfileTable({
         className="grid items-center gap-3 px-4 py-2 sticky top-0 z-10"
         style={{
           gridTemplateColumns: PROFILE_TABLE_GRID_TEMPLATE,
-          background: "rgba(16,18,24,0.92)",
+          background: "rgba(23,23,23,0.92)",
           backdropFilter: "blur(12px)",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
         }}
@@ -72,10 +74,10 @@ export function ProfileTable({
         {COLUMNS.map((c, i) => (
           <div
             key={c.label || `col-${i}`}
-            className="text-[10px] font-semibold tracking-wider uppercase text-slate-400"
+            className="text-[10px] font-semibold tracking-wider uppercase text-neutral-400"
             style={{ textAlign: c.align ?? "left" }}
           >
-            {c.label}
+            {t(c.label)}
           </div>
         ))}
       </div>

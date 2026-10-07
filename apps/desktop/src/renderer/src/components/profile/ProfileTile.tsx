@@ -16,6 +16,7 @@ import { Button } from "../atoms/Button";
 import { relativeTime } from "../../lib/relativeTime";
 import { cn } from "../../lib/cn";
 import { profileEmoji } from "../../lib/profileEmoji";
+import { useI18n } from "../../lib/i18n";
 import { emojiTint } from "../../lib/emojiTint";
 import { useProxyHealth } from "../../lib/proxyHealth";
 import type { ActivityEvent } from "../../types";
@@ -32,7 +33,7 @@ export interface TileData extends ProfileSummary {
 const RING_BY_STATE: Record<TileState, string> = {
   idle: "rgba(255,255,255,0.05)",
   running: "rgba(16,185,129,0.30)",
-  ai: "rgba(168,85,247,0.30)",
+  ai: "rgba(255,255,255,0.30)",
   error: "rgba(239,68,68,0.30)",
 };
 
@@ -45,7 +46,7 @@ const RING_BY_STATE: Record<TileState, string> = {
 const GLOW_BY_STATE: Record<TileState, string> = {
   idle: "0 0 0 0 rgba(0,0,0,0)",
   running: "0 0 32px rgba(16,185,129,0.18)",
-  ai: "0 0 32px rgba(168,85,247,0.18)",
+  ai: "0 0 32px rgba(255,255,255,0.18)",
   error: "0 0 32px rgba(239,68,68,0.15)",
 };
 
@@ -84,6 +85,7 @@ export function ProfileTile({
   onDuplicate,
   onDelete,
 }: Props): JSX.Element {
+  const { t } = useI18n();
   const isRunning = profile.state !== "idle";
   const liveRuns = runs ?? [];
   // Run-model wind-down: the profile-level "terminating" flag only blocks the
@@ -170,24 +172,24 @@ export function ProfileTile({
         className="group flex justify-between items-start gap-2.5 cursor-pointer text-left bg-transparent border-0 p-0"
       >
         <div className="flex gap-2.5 items-center min-w-0">
-          <div className="relative flex-shrink-0" title="Click to set an emoji">
+          <div className="relative flex-shrink-0" title={t("Click to set an emoji")}>
             <Avatar emoji={emoji} tint={avatarTint} accent={profile.state === "ai"} size={40} />
             <span
               className="absolute -right-1 -bottom-1 w-4 h-4 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               style={{
-                background: "#12141a",
-                color: "#8b93a3",
-                boxShadow: "0 0 0 2px #0b0c10, inset 0 0 0 1px rgba(255,255,255,0.15)",
+                background: "#1a1a1a",
+                color: "#a3a3a3",
+                boxShadow: "0 0 0 2px #141414, inset 0 0 0 1px rgba(255,255,255,0.15)",
               }}
             >
               <Pencil size={8} strokeWidth={2} />
             </span>
           </div>
           <div className="min-w-0">
-            <div className="font-semibold text-[13px] leading-tight text-slate-100 truncate hover:text-white transition-colors">
+            <div className="font-semibold text-[13px] leading-tight text-neutral-100 truncate hover:text-white transition-colors">
               {profile.name}
             </div>
-            <div className="mono text-[10px] text-slate-400 mt-[3px] truncate">
+            <div className="mono text-[10px] text-neutral-400 mt-[3px] truncate">
               {profile.id.slice(0, 12)}
             </div>
           </div>
@@ -201,7 +203,7 @@ export function ProfileTile({
           {profile.tags.slice(0, 4).map((t) => (
             <span
               key={t}
-              className="mz-pill mono text-slate-400"
+              className="mz-pill mono text-neutral-400"
               style={{
                 background: "rgba(255,255,255,0.06)",
                 boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17)",
@@ -211,7 +213,7 @@ export function ProfileTile({
             </span>
           ))}
           {profile.tags.length > 4 && (
-            <span className="mz-pill mono text-slate-400">+{profile.tags.length - 4}</span>
+            <span className="mz-pill mono text-neutral-400">+{profile.tags.length - 4}</span>
           )}
         </div>
       )}
@@ -223,18 +225,18 @@ export function ProfileTile({
       <ContextLine profile={profile} />
 
       {/* Bottom meta — platform + last opened */}
-      <div className="flex items-center gap-1.5 mono text-[10px] text-slate-400 leading-tight">
+      <div className="flex items-center gap-1.5 mono text-[10px] text-neutral-400 leading-tight">
         <PlatformIcon
           platform={platformFromDeviceFamily(profile.device)}
           size={12}
-          className="text-slate-400"
+          className="text-neutral-400"
         />
-        <span className="text-slate-400">
+        <span className="text-neutral-400">
           {platformLabel(platformFromDeviceFamily(profile.device))}
         </span>
-        <span className="text-slate-400">·</span>
+        <span className="text-neutral-400">·</span>
         <span className="truncate">
-          {profile.lastOpenedAt ? relativeTime(profile.lastOpenedAt) : "never opened"}
+          {profile.lastOpenedAt ? relativeTime(profile.lastOpenedAt) : t("never opened")}
         </span>
       </div>
 
@@ -262,29 +264,29 @@ export function ProfileTile({
                   <span
                     className="mono text-[9px] px-1 py-px rounded text-amber-300 flex-shrink-0"
                     style={{ background: "rgba(245,158,11,0.10)" }}
-                    title="This instance runs on a disposable working copy — its changes are discarded when it closes."
+                    title={t("This instance runs on a disposable working copy — its changes are discarded when it closes.")}
                   >
-                    ephemeral
+                    {t("ephemeral")}
                   </span>
                 )}
-                <span className="mono text-[9px] text-slate-400 ml-auto flex-shrink-0">
+                <span className="mono text-[9px] text-neutral-400 ml-auto flex-shrink-0">
                   {relativeTime(r.startedAt)}
                 </span>
                 <button
                   type="button"
                   onClick={(e) => handleScreenshotRun(e, r)}
-                  title="Screenshot this instance's page (in-browser capture, never the desktop)"
-                  aria-label="Screenshot this instance"
-                  className="no-drag w-5 h-5 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-white/10 transition-colors cursor-pointer border-0 bg-transparent flex-shrink-0"
+                  title={t("Screenshot this instance's page (in-browser capture, never the desktop)")}
+                  aria-label={t("Screenshot this instance")}
+                  className="no-drag w-5 h-5 rounded-md flex items-center justify-center text-neutral-400 hover:text-neutral-200 hover:bg-white/10 transition-colors cursor-pointer border-0 bg-transparent flex-shrink-0"
                 >
                   <Camera size={11} />
                 </button>
                 <button
                   type="button"
                   onClick={(e) => handleCloseRun(e, r.runId)}
-                  title="Close this instance (other instances stay up)"
-                  aria-label="Close this instance"
-                  className="no-drag w-5 h-5 rounded-md flex items-center justify-center text-slate-400 hover:text-red-300 hover:bg-red-400/10 transition-colors cursor-pointer border-0 bg-transparent flex-shrink-0"
+                  title={t("Close this instance (other instances stay up)")}
+                  aria-label={t("Close this instance")}
+                  className="no-drag w-5 h-5 rounded-md flex items-center justify-center text-neutral-400 hover:text-red-300 hover:bg-red-400/10 transition-colors cursor-pointer border-0 bg-transparent flex-shrink-0"
                 >
                   <X size={11} />
                 </button>
@@ -301,7 +303,7 @@ export function ProfileTile({
               disabled
               leftIcon={<Loader2 size={11} className="animate-spin" />}
             >
-              Terminating…
+              {t("Terminating…")}
             </Button>
           ) : !isRunning ? (
             <Button
@@ -311,7 +313,7 @@ export function ProfileTile({
               onClick={handleLaunch}
               leftIcon={<Play size={11} fill="currentColor" strokeWidth={0} />}
             >
-              {pending ? "Launching…" : "Launch"}
+              {pending ? t("Launching…") : t("Launch")}
             </Button>
           ) : (
             <>
@@ -327,17 +329,17 @@ export function ProfileTile({
                 onClick={handleNewInstance}
                 leftIcon={<Plus size={11} strokeWidth={2.5} />}
               >
-                {pending ? "Starting…" : "New instance"}
+                {pending ? t("Starting…") : t("New instance")}
               </Button>
               <Button
                 variant="secondary"
                 size="md"
                 disabled={pending}
                 onClick={handleStop}
-                title="Close ALL instances of this profile"
+                title={t("Close ALL instances of this profile")}
                 leftIcon={<Square size={10} fill="currentColor" strokeWidth={0} />}
               >
-                Stop all
+                {t("Stop all")}
               </Button>
             </>
           )}
@@ -354,6 +356,7 @@ export function ProfileTile({
  * re-check. Direct profiles show a muted "no proxy" line instead.
  */
 function ProxyHealthRow({ profile }: { profile: TileData }): JSX.Element {
+  const { t } = useI18n();
   const { health, recheck } = useProxyHealth(profile.id, profile.proxy, profile.proxyCountry);
 
   if (health.status === "direct") {
@@ -362,8 +365,8 @@ function ProxyHealthRow({ profile }: { profile: TileData }): JSX.Element {
         className="flex items-center gap-2 px-2.5 py-2 rounded-[11px]"
         style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.19)" }}
       >
-        <span className="text-[12px] font-semibold text-slate-400 truncate">Direct — no proxy</span>
-        <span className="ml-auto mono text-[10px] text-slate-400">host DNS</span>
+        <span className="text-[12px] font-semibold text-neutral-400 truncate">{t("Direct — no proxy")}</span>
+        <span className="ml-auto mono text-[10px] text-neutral-400">{t("host DNS")}</span>
       </div>
     );
   }
@@ -372,15 +375,15 @@ function ProxyHealthRow({ profile }: { profile: TileData }): JSX.Element {
   const isError = health.status === "error";
   const label =
     health.status === "ok"
-      ? (health.country ?? countryNameFromCc(cc) ?? "Connected")
+      ? (health.country ?? countryNameFromCc(cc) ?? t("Connected"))
       : isError
-        ? "Proxy unreachable"
-        : (countryNameFromCc(cc) ?? "Checking…");
+        ? t("Proxy unreachable")
+        : (countryNameFromCc(cc) ?? t("Checking…"));
   const title = isError
-    ? `${health.error} — click to retry`
+    ? t("{error} — click to retry", { error: health.error })
     : health.status === "ok"
-      ? `${label}${cc ? ` · ${cc.toUpperCase()}` : ""} — click to re-check`
-      : "Checking proxy…";
+      ? t("{label}{cc} — click to re-check", { label, cc: cc ? ` · ${cc.toUpperCase()}` : "" })
+      : t("Checking proxy…");
 
   return (
     <button
@@ -406,7 +409,7 @@ function ProxyHealthRow({ profile }: { profile: TileData }): JSX.Element {
       <span
         className={cn(
           "text-[12.5px] font-semibold truncate",
-          isError ? "text-red-300" : "text-slate-200",
+          isError ? "text-red-300" : "text-neutral-200",
         )}
       >
         {label}
@@ -415,7 +418,7 @@ function ProxyHealthRow({ profile }: { profile: TileData }): JSX.Element {
       {health.status === "ok" && (
         <span className="ml-auto inline-flex items-center gap-1.5">
           {profile.proxy && (
-            <span className="mono text-[10px] text-slate-400">proxy</span>
+            <span className="mono text-[10px] text-neutral-400">{t("proxy")}</span>
           )}
           <span
             className="w-[7px] h-[7px] rounded-full bg-emerald-500"
@@ -429,13 +432,13 @@ function ProxyHealthRow({ profile }: { profile: TileData }): JSX.Element {
           style={{ color: "#f5b34a" }}
         >
           <Loader2 size={12} className="animate-spin" />
-          Checking…
+          {t("Checking…")}
         </span>
       )}
       {isError && (
         <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-red-300">
           <RefreshCw size={11} />
-          retry
+          {t("retry")}
         </span>
       )}
     </button>
@@ -443,10 +446,11 @@ function ProxyHealthRow({ profile }: { profile: TileData }): JSX.Element {
 }
 
 function PillForState({ state }: { state: TileState }): JSX.Element {
-  if (state === "ai") return <Pill kind="ai" dot glow>ai-driven</Pill>;
-  if (state === "running") return <Pill kind="running" dot glow>running</Pill>;
-  if (state === "error") return <Pill kind="error">error</Pill>;
-  return <Pill kind="idle">idle</Pill>;
+  const { t } = useI18n();
+  if (state === "ai") return <Pill kind="ai" dot glow>{t("ai-driven")}</Pill>;
+  if (state === "running") return <Pill kind="running" dot glow>{t("running")}</Pill>;
+  if (state === "error") return <Pill kind="error">{t("error")}</Pill>;
+  return <Pill kind="idle">{t("idle")}</Pill>;
 }
 
 function ContextLine({ profile }: { profile: TileData }): JSX.Element | null {
@@ -455,17 +459,17 @@ function ContextLine({ profile }: { profile: TileData }): JSX.Element | null {
       <div
         className="flex items-center gap-2 px-2.5 py-2 rounded-lg"
         style={{
-          background: "rgba(168,85,247,0.06)",
-          boxShadow: "inset 0 0 0 1px rgba(168,85,247,0.12)",
+          background: "rgba(255,255,255,0.06)",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
         }}
       >
-        <Zap size={12} className="text-purple-400" />
-        <span className="mono text-[11px] text-purple-200 truncate flex-1">
-          <span className="text-purple-400">multizen.</span>
+        <Zap size={12} className="text-neutral-300" />
+        <span className="mono text-[11px] text-neutral-100 truncate flex-1">
+          <span className="text-neutral-300">multizen.</span>
           {profile.lastTool ?? "…"}
         </span>
         {profile.lastDuration && (
-          <span className="mono text-[10px] text-purple-300">{profile.lastDuration}</span>
+          <span className="mono text-[10px] text-neutral-200">{profile.lastDuration}</span>
         )}
       </div>
     );
@@ -496,6 +500,7 @@ function ActionMenu({
   onDuplicate: () => void;
   onDelete: () => void;
 }): JSX.Element {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
@@ -532,7 +537,7 @@ function ActionMenu({
         variant="secondary"
         size="icon"
         onClick={() => setOpen((v) => !v)}
-        aria-label="More actions"
+        aria-label={t("More actions")}
       >
         <MoreHorizontal size={14} strokeWidth={1.5} />
       </Button>
@@ -548,24 +553,24 @@ function ActionMenu({
               style={{
                 top: coords.top,
                 left: coords.left,
-                background: "rgba(15,16,22,0.98)",
+                background: "rgba(23,23,23,0.98)",
                 boxShadow:
                   "inset 0 0 0 1px rgba(255,255,255,0.15), 0 20px 40px rgba(0,0,0,0.6)",
                 backdropFilter: "blur(20px)",
               }}
             >
               <MenuItem onClick={() => { setOpen(false); onEdit(); }}>
-                Edit profile
+                {t("Edit profile")}
               </MenuItem>
               <MenuItem onClick={() => { setOpen(false); onExport(); }}>
-                Export archive…
+                {t("Export archive…")}
               </MenuItem>
               <MenuItem onClick={() => { setOpen(false); onDuplicate(); }}>
-                Duplicate
+                {t("Duplicate")}
               </MenuItem>
               <div style={{ height: 1, margin: "4px 0", background: "rgba(255,255,255,0.06)" }} />
               <MenuItem onClick={() => { setOpen(false); onDelete(); }} tone="danger">
-                Delete profile
+                {t("Delete profile")}
               </MenuItem>
             </div>
           </>,
@@ -590,7 +595,7 @@ function MenuItem({
       onClick={onClick}
       className={cn(
         "w-full text-left px-3 py-1.5 text-[12px] cursor-pointer transition-colors hover:bg-white/[0.05]",
-        tone === "danger" ? "text-red-400" : "text-slate-200",
+        tone === "danger" ? "text-red-400" : "text-neutral-200",
       )}
     >
       {children}

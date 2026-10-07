@@ -129,6 +129,8 @@ const api = {
   },
   system: {
     info: (): Promise<SystemInfo> => ipcRenderer.invoke("system:info"),
+    /** Push the renderer's UI language so main-process dialogs match it. */
+    setLang: (lang: "en" | "zh"): void => ipcRenderer.send("ui:lang", lang),
   },
   chromium: {
     status: (): Promise<ChromiumStatus> => ipcRenderer.invoke("chromium:status"),
