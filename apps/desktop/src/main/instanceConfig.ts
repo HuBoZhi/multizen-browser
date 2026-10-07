@@ -17,6 +17,18 @@ import { join, resolve } from "node:path";
 /** --instance-id becomes a directory name — keep it fs-safe on all platforms. */
 const INSTANCE_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 
+/** FR-9c placement modes for --window=<mode>. */
+export const WINDOW_MODES = [
+  "cascade",
+  "tile-left",
+  "tile-right",
+  "quad-1",
+  "quad-2",
+  "quad-3",
+  "quad-4",
+] as const;
+export type WindowMode = (typeof WINDOW_MODES)[number];
+
 export interface InstanceConfig {
   /** Instance name (FR-1). Null = default single-instance behavior. */
   readonly instanceId: string | null;
@@ -32,6 +44,8 @@ export interface InstanceConfig {
   readonly importProfile: string | null;
   /** Passphrase for --import-profile (archives are always encrypted). */
   readonly importPassphrase: string | null;
+  /** Window placement mode (FR-9c). Null = default (maximize / restore). */
+  readonly windowMode: WindowMode | null;
   /** The PRE-redirect userData path (upstream default), captured before setPath. */
   readonly defaultUserDataDir: string;
   /** Effective userData dir after applyInstanceConfig() ran. */
@@ -99,7 +113,21 @@ export function parseInstanceArgs(argv: readonly string[]): Omit<InstanceConfig,
   const importPassphrase = readFlag(argv, "import-passphrase");
 
   if (importPassphrase !== null && importProfile === null) {
-    throw new InstanceArgError(`--import-passphrase only makes sense together with --import-profile`);
+    throw new InstanceArgError(
+      `--import-passphrase only makes sense together with --import-profile`,
+    );
+  }
+
+  const windowModeRaw = readFlag(argv, "window");
+  let windowMode: WindowMode | null = null;
+  if (windowModeRaw !== null) {
+    const match = WINDOW_MODES.find((m) => m === windowModeRaw);
+    if (match === undefined) {
+      throw new InstanceArgError(
+        `--window must be one of ${WINDOW_MODES.join(", ")} — got "${windowModeRaw}"`,
+      );
+    }
+    windowMode = match;
   }
 
   const envRaw = process.env.MULTIZEN_MCP_PORT;
@@ -114,6 +142,7 @@ export function parseInstanceArgs(argv: readonly string[]): Omit<InstanceConfig,
       launchProfile,
       importProfile,
       importPassphrase,
+      windowMode,
     };
   }
 
@@ -125,6 +154,7 @@ export function parseInstanceArgs(argv: readonly string[]): Omit<InstanceConfig,
     launchProfile,
     importProfile,
     importPassphrase,
+    windowMode,
   };
 }
 

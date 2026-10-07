@@ -6,12 +6,13 @@ import { existsSync } from "node:fs";
 import { promises as fsp } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { createServer } from "node:net";
 import { promisify } from "node:util";
 
 const execFileP = promisify(execFile);
 import type { BrowserDriver } from "@multizen/mcp-server";
 import type { ProfileManager } from "@multizen/profile-manager";
-import { reconcileDeviceFamilyToHost } from "@multizen/profile-manager";
+import { copyProfileData, reconcileDeviceFamilyToHost } from "@multizen/profile-manager";
 import type { ClientHints, FingerprintConfig, LaunchedProfile, ProfileId } from "@multizen/types";
 import { waitForCdpSessionReady } from "./cdpReadiness";
 import type { BrowserEngine } from "@multizen/settings-store";
@@ -33,6 +34,9 @@ interface RunningProcess {
   /** The engine's `--user-data-dir`. Used to sweep any lingering browser
    *  process that still holds this profile's data dir on shutdown. */
   browserDataDir: string;
+  /** Ephemeral-run working copy this browser runs against (FR-6 T2). Deleted
+   *  when the browser exits; absent for normal (persistent) profiles. */
+  ephemeralRunDir?: string;
   /** Polls /json/list and kills the child when no page targets remain. */
   windowWatcher: NodeJS.Timeout;
 }
@@ -49,6 +53,9 @@ export interface ChromiumBrowserDriverOptions {
   /** Root of the shared extension store, e.g. `<userData>/data/extension-store`.
    *  Used to resolve shared extension references to their on-disk load dir. */
   extensionStoreRoot: string;
+  /** Root for ephemeral run working copies, e.g. `<userData>/data/runs`.
+   *  Ephemeral profiles materialize a fresh copy here per launch. */
+  runsRoot: string;
 }
 
 export type RunningStateChange =
@@ -79,6 +86,7 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
   private readonly bootstrap: ChromiumBootstrap;
   private readonly onCompanionInstall?: (profileId: ProfileId, extensionId: string) => void;
   private readonly extensionStoreRoot: string;
+  private readonly runsRoot: string;
 
   constructor(opts: ChromiumBrowserDriverOptions) {
     super();
@@ -86,6 +94,7 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
     this.bootstrap = opts.chromiumBootstrap;
     this.onCompanionInstall = opts.onCompanionInstall;
     this.extensionStoreRoot = opts.extensionStoreRoot;
+    this.runsRoot = opts.runsRoot;
   }
 
   override on<K extends keyof DriverEvents>(event: K, listener: DriverEvents[K]): this {
@@ -118,10 +127,22 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
     // failed-to-spawn launch counts — the user pressed Launch.
     this.profileManager.markOpened(profileId);
 
-    const port = this.allocatePort();
+    const port = await this.allocatePort();
     const chromiumPath = this.bootstrap.resolveBinaryPath();
     const engine: BrowserEngine = this.bootstrap.getEngine();
-    const browserDataDir = browserDataDirForEngine(profile.dataDir, engine);
+    // FR-6 T2: ephemeral profiles never run on their template dir — every
+    // launch materializes a fresh working copy (identity carries over:
+    // cookies, logins, fingerprint; regenerable caches skipped), the browser
+    // runs against the copy, and the copy is deleted when it exits.
+    let ephemeralRunDir: string | undefined;
+    if (profile.ephemeral) {
+      ephemeralRunDir = join(this.runsRoot, `${profileId}-${Date.now()}`);
+      copyProfileData(profile.dataDir, ephemeralRunDir);
+    }
+    const browserDataDir = browserDataDirForEngine(
+      ephemeralRunDir ?? profile.dataDir,
+      engine,
+    );
     // Read the actual Chromium binary's version and reconcile the
     // profile's spoofed UA against it. Detection vendors fingerprint the
     // JS engine and compare against the claimed UA — claiming Chrome
@@ -717,6 +738,7 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
       startedAt,
       session,
       browserDataDir,
+      ephemeralRunDir,
       windowWatcher,
     };
     const r = record;
@@ -728,6 +750,15 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
       void session.close().catch(() => {});
       void stopBridgeForProfile(profileId).catch(() => {});
       this.running.delete(profileId);
+      if (record.ephemeralRunDir) {
+        // FR-6 T2: the working copy dies with the browser — the profile's
+        // own dir is the only persistent truth. Delayed a beat because dying
+        // Chromium helpers on Windows release their file handles lazily.
+        const runDir = record.ephemeralRunDir;
+        setTimeout(() => {
+          void fsp.rm(runDir, { recursive: true, force: true }).catch(() => {});
+        }, 3000);
+      }
       if (wasTracked) {
         // close() removes from the map first so wasTracked is false there;
         // this path covers (a) user quit Chrome directly with ⌘Q, and (b)
@@ -827,7 +858,19 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
     return r.session;
   }
 
-  private allocatePort(): number {
+  /**
+   * FR-5: CDP debug ports are OS-assigned free ports, not a fixed 9222+
+   * sequence. A fixed base collides the moment two MultiZen instances each
+   * launch their first browser (both would take 9222). The port is internal
+   * — agents only ever see the MCP endpoint — so predictability buys nothing
+   * while collision breaks launches. Brief-and-release probing has a tiny
+   * TOCTOU window; worst case the CDP readiness wait fails and a retry picks
+   * a fresh port.
+   */
+  private async allocatePort(): Promise<number> {
+    const probed = await probeFreeLoopbackPort();
+    if (probed !== null) return probed;
+    // Probe failed (loopback bind denied?) — legacy sequential fallback.
     return this.nextPort++;
   }
 }
@@ -1112,6 +1155,24 @@ function cloakBrowserPlatform(fp: FingerprintConfig): "macos" | "windows" | "lin
   if (process.platform === "darwin") return "macos";
   if (process.platform === "win32") return "windows";
   return "linux";
+}
+
+/**
+ * Ask the OS for a free loopback port by briefly binding :0 (FR-5). The
+ * socket is closed before the port is handed to Chromium, so this is a hint,
+ * not a reservation. Resolves null when even a loopback bind fails.
+ */
+function probeFreeLoopbackPort(): Promise<number | null> {
+  return new Promise((resolve) => {
+    const server = createServer();
+    server.unref();
+    server.once("error", () => resolve(null));
+    server.listen(0, "127.0.0.1", () => {
+      const addr = server.address();
+      const port = typeof addr === "object" && addr !== null ? addr.port : null;
+      server.close(() => resolve(port));
+    });
+  });
 }
 
 function browserDataDirForEngine(profileDataDir: string, engine: BrowserEngine): string {

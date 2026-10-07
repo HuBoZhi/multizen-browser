@@ -1,4 +1,4 @@
-export { ProfileManager } from "./ProfileManager.js";
+export { ProfileManager, copyProfileData } from "./ProfileManager.js";
 export {
   defaultFingerprint,
   generateFingerprint,

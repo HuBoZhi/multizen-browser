@@ -52,6 +52,8 @@ import type { ActivityEvent } from "@multizen/mcp-server";
 import type { AppSettings } from "@multizen/settings-store";
 
 export interface SystemInfo {
+  /** Which multi-instance id this app is (null = default single instance). */
+  instanceId: string | null;
   mcpHttpUrl: string | null;
   mcpAuthToken: string | null;
   appVersion: string;

@@ -422,6 +422,7 @@ export function App(): JSX.Element {
               profiles={profiles}
               mcpUrl={info?.mcpHttpUrl ?? null}
               mcpToken={info?.mcpAuthToken ?? null}
+              instanceId={info?.instanceId ?? null}
             />
           )}
 

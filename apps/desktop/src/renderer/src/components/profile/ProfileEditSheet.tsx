@@ -32,6 +32,8 @@ interface FormState {
   icon: string | undefined;
   /** Start page ("" = app default). */
   startUrl: string;
+  /** Ephemeral working-copy mode — launches run on disposable copies. */
+  ephemeral: boolean;
   proxyEnabled: boolean;
   proxyType: "http" | "socks5";
   proxyHost: string;
@@ -48,6 +50,7 @@ function toForm(p: Profile): FormState {
     tagsRaw: p.tags.join(", "),
     icon: p.icon,
     startUrl: p.startUrl ?? "",
+    ephemeral: p.ephemeral ?? false,
     proxyEnabled: !!p.proxy,
     proxyType: p.proxy?.type ?? "http",
     proxyHost: p.proxy?.host ?? "",
@@ -81,6 +84,7 @@ function toPatch(f: FormState): UpdateProfileInput {
     tags: f.tagsRaw.split(",").map((s) => s.trim()).filter(Boolean),
     icon: f.icon ?? null, // null clears a custom icon (revert to derived default)
     startUrl: f.startUrl.trim() || null, // null → app default start page
+    ephemeral: f.ephemeral,
     proxy,
     fingerprint: f.fingerprint,
   };
@@ -228,7 +232,28 @@ export function ProfileEditSheet({ profile, onSaved }: Props): JSX.Element {
         )}
 
         {section === "browser" && (
-          <BrowserSection startUrl={form.startUrl} onStartUrl={(v) => update("startUrl", v)} />
+          <div className="space-y-4">
+            <BrowserSection startUrl={form.startUrl} onStartUrl={(v) => update("startUrl", v)} />
+            <label
+              className="flex items-start gap-2 text-[12px] text-slate-300 cursor-pointer"
+              title="Every launch runs on a fresh copy of this profile's data; the copy is deleted when the browser closes. The profile itself stays untouched — use this to run the same identity in parallel without ever writing back."
+            >
+              <input
+                type="checkbox"
+                checked={form.ephemeral}
+                onChange={(e) => update("ephemeral", e.target.checked)}
+                className="w-3.5 h-3.5 mt-0.5 rounded accent-purple-500"
+              />
+              <span>
+                Ephemeral runs (working-copy mode)
+                <span className="block text-[10px] text-slate-600 leading-relaxed mt-0.5">
+                  Launch on a disposable copy — cookies/logins carry over, changes are discarded
+                  when the browser closes. The profile becomes a read-only template, safe to run
+                  the same identity in parallel across instances.
+                </span>
+              </span>
+            </label>
+          </div>
         )}
 
         {section === "proxy" && (

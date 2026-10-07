@@ -1,4 +1,5 @@
 import { screen } from "electron";
+import type { WindowMode } from "./instanceConfig.ts";
 
 /**
  * Window geometry persistence guard (FR-9b of the requirements doc).
@@ -74,4 +75,52 @@ export function clampWindowState(state: WindowState): WindowState {
   const x = Math.min(Math.max(state.x, wa.x), wa.x + wa.width - MIN_VISIBLE_WIDTH);
   const y = Math.min(Math.max(state.y, wa.y), wa.y + wa.height - MIN_VISIBLE_HEIGHT);
   return { x, y, width, height, maximized: state.maximized };
+}
+
+/**
+ * FR-9c: explicit placement for --window=<mode>. All math is on the PRIMARY
+ * display's workArea, so every mode is on-screen by construction — the
+ * "never off-screen" guarantee without needing the clamp pass. The cascade
+ * diagonal offset derives from a stable hash of the instance id, so the same
+ * instance always lands in the same slot regardless of launch order.
+ */
+export function placementBounds(mode: WindowMode, instanceId: string | null): Rect {
+  const wa = screen.getPrimaryDisplay().workArea;
+  switch (mode) {
+    case "tile-left":
+      return { x: wa.x, y: wa.y, width: Math.floor(wa.width / 2), height: wa.height };
+    case "tile-right":
+      return {
+        x: wa.x + Math.ceil(wa.width / 2),
+        y: wa.y,
+        width: Math.floor(wa.width / 2),
+        height: wa.height,
+      };
+    case "quad-1":
+    case "quad-2":
+    case "quad-3":
+    case "quad-4": {
+      const halfW = Math.floor(wa.width / 2);
+      const halfH = Math.floor(wa.height / 2);
+      const col = mode === "quad-1" || mode === "quad-3" ? 0 : 1;
+      const row = mode === "quad-1" || mode === "quad-2" ? 0 : 1;
+      return { x: wa.x + col * halfW, y: wa.y + row * halfH, width: halfW, height: halfH };
+    }
+    case "cascade": {
+      let hash = 0;
+      for (const ch of instanceId ?? "multizen") {
+        hash = (hash * 31 + ch.charCodeAt(0)) | 0;
+      }
+      const step = 36;
+      const offset = Math.abs(hash) % 8;
+      const width = Math.min(wa.width - 320, 1280);
+      const height = Math.min(wa.height - 240, 800);
+      return {
+        x: wa.x + 40 + offset * step,
+        y: wa.y + 24 + offset * step,
+        width,
+        height,
+      };
+    }
+  }
 }

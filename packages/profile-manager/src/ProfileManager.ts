@@ -51,6 +51,24 @@ interface ProfileRow {
   icon: string | null;
   start_url: string | null;
   search_provider: string | null;
+  ephemeral: number | null;
+}
+
+/**
+ * Copy a profile's browser data from `srcDir` to `destDir`, skipping
+ * regenerable caches and singleton locks. Shared by duplicate() (permanent
+ * same-identity copy) and the driver's ephemeral run materialization —
+ * both need "the identity, minus the junk".
+ */
+export function copyProfileData(srcDir: string, destDir: string): void {
+  mkdirSync(destDir, { recursive: true });
+  cpSync(srcDir, destDir, {
+    recursive: true,
+    // Overwrite read-only bits some Chromium state files carry (they break a
+    // naive copy on Windows); skip anything regenerable.
+    force: true,
+    filter: (p) => !SKIPPED_ON_DUPLICATE.has(basename(p)),
+  });
 }
 
 export interface ProfileManagerOptions {
@@ -103,6 +121,9 @@ export class ProfileManager {
     }
     if (!cols.some((c) => c.name === "search_provider")) {
       this.db.exec(`ALTER TABLE profiles ADD COLUMN search_provider TEXT`);
+    }
+    if (!cols.some((c) => c.name === "ephemeral")) {
+      this.db.exec(`ALTER TABLE profiles ADD COLUMN ephemeral INTEGER`);
     }
   }
 
@@ -163,6 +184,7 @@ export class ProfileManager {
       icon: input.icon,
       startUrl: input.startUrl,
       searchProvider: input.searchProvider,
+      ephemeral: input.ephemeral,
       dataDir,
       createdAt: now,
       updatedAt: now,
@@ -171,8 +193,8 @@ export class ProfileManager {
     this.db
       .prepare(
         `INSERT INTO profiles
-         (id, name, notes, tags, proxy, fingerprint, extensions, icon, start_url, search_provider, data_dir, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, name, notes, tags, proxy, fingerprint, extensions, icon, start_url, search_provider, ephemeral, data_dir, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         profile.id,
@@ -185,6 +207,7 @@ export class ProfileManager {
         profile.icon ?? null,
         profile.startUrl ?? null,
         profile.searchProvider ?? null,
+        profile.ephemeral ? 1 : 0,
         profile.dataDir,
         profile.createdAt,
         profile.updatedAt,
@@ -212,14 +235,7 @@ export class ProfileManager {
 
     const newId = uuidv4();
     const dataDir = join(this.profilesRoot, newId);
-    mkdirSync(dataDir, { recursive: true });
-    cpSync(src.dataDir, dataDir, {
-      recursive: true,
-      // Overwrite read-only bits some Chromium state files carry (they break a
-      // naive copy on Windows); skip anything regenerable.
-      force: true,
-      filter: (p) => !SKIPPED_ON_DUPLICATE.has(basename(p)),
-    });
+    copyProfileData(src.dataDir, dataDir);
 
     const now = new Date().toISOString();
     const profile: Profile = {
@@ -235,8 +251,8 @@ export class ProfileManager {
     this.db
       .prepare(
         `INSERT INTO profiles
-         (id, name, notes, tags, proxy, fingerprint, extensions, icon, start_url, search_provider, data_dir, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, name, notes, tags, proxy, fingerprint, extensions, icon, start_url, search_provider, ephemeral, data_dir, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         profile.id,
@@ -249,6 +265,7 @@ export class ProfileManager {
         profile.icon ?? null,
         profile.startUrl ?? null,
         profile.searchProvider ?? null,
+        profile.ephemeral ? 1 : 0,
         profile.dataDir,
         profile.createdAt,
         profile.updatedAt,
@@ -274,8 +291,8 @@ export class ProfileManager {
     this.db
       .prepare(
         `INSERT INTO profiles
-         (id, name, notes, tags, proxy, fingerprint, extensions, icon, start_url, search_provider, data_dir, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, name, notes, tags, proxy, fingerprint, extensions, icon, start_url, search_provider, ephemeral, data_dir, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         profile.id,
@@ -288,6 +305,7 @@ export class ProfileManager {
         profile.icon ?? null,
         profile.startUrl ?? null,
         profile.searchProvider ?? null,
+        profile.ephemeral ? 1 : 0,
         profile.dataDir,
         profile.createdAt,
         profile.updatedAt,
@@ -321,6 +339,8 @@ export class ProfileManager {
         patch.searchProvider === null
           ? undefined
           : (patch.searchProvider ?? existing.searchProvider),
+      // undefined keeps existing; explicit boolean sets/clears the flag.
+      ephemeral: patch.ephemeral ?? existing.ephemeral,
       updatedAt: now,
       // Stale country if proxy changed — next launch / Test re-probes.
       proxyCountry: proxyChanged ? undefined : existing.proxyCountry,
@@ -330,7 +350,7 @@ export class ProfileManager {
       .prepare(
         `UPDATE profiles SET
            name = ?, notes = ?, tags = ?, proxy = ?, fingerprint = ?, extensions = ?,
-           icon = ?, start_url = ?, search_provider = ?, updated_at = ?, proxy_country = ?
+           icon = ?, start_url = ?, search_provider = ?, ephemeral = ?, updated_at = ?, proxy_country = ?
          WHERE id = ?`,
       )
       .run(
@@ -343,6 +363,7 @@ export class ProfileManager {
         merged.icon ?? null,
         merged.startUrl ?? null,
         merged.searchProvider ?? null,
+        merged.ephemeral ? 1 : 0,
         merged.updatedAt,
         merged.proxyCountry ?? null,
         id,
@@ -413,6 +434,7 @@ export class ProfileManager {
       icon: row.icon ?? undefined,
       startUrl: row.start_url ?? undefined,
       searchProvider: row.search_provider ?? undefined,
+      ephemeral: row.ephemeral === 1,
       dataDir: row.data_dir,
       createdAt: row.created_at,
       updatedAt: row.updated_at,

@@ -166,6 +166,15 @@ export interface Profile {
    *  overrides (verified), so this is deferred to the patched-Chromium build.
    *  The column/field are kept so the feature can land without a migration. */
   searchProvider?: string;
+  /**
+   * Ephemeral working-copy mode (FR-6 T2): every launch materializes a fresh
+   * copy of this profile's data (cookies/logins carry over, caches skipped)
+   * under `<userData>/data/runs/`, the browser runs against the copy, and the
+   * copy is DELETED when the browser exits. The profile itself is the template
+   * — the only persistent truth — so parallel runs never fight over it and a
+   * finished run leaves nothing behind.
+   */
+  ephemeral?: boolean;
   dataDir: string;
   createdAt: string;
   updatedAt: string;
@@ -204,6 +213,7 @@ export interface CreateProfileInput {
   icon?: string;
   startUrl?: string;
   searchProvider?: string;
+  ephemeral?: boolean;
   proxy?: ProxyConfig;
   fingerprint?: Partial<FingerprintConfig>;
   extensions?: ExtensionConfig[];
@@ -216,6 +226,7 @@ export interface UpdateProfileInput {
   icon?: string | null;
   startUrl?: string | null;
   searchProvider?: string | null;
+  ephemeral?: boolean;
   proxy?: ProxyConfig | null;
   fingerprint?: Partial<FingerprintConfig>;
   extensions?: ExtensionConfig[];

@@ -43,7 +43,7 @@ import {
 import { probeProxyGeo, type ProxyGeoResult } from "./proxyGeo.ts";
 import { initInstanceConfig, resolveMcpPort, sharedEngineRoot } from "./instanceConfig.ts";
 import { withEngineInstallLock } from "./engineInstallLock.ts";
-import { clampWindowState, type WindowState } from "./windowState.ts";
+import { clampWindowState, placementBounds, type WindowState } from "./windowState.ts";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
@@ -103,29 +103,42 @@ let cachedSettings: AppSettings | null = null;
 
 function createWindow(): void {
   const iconPath = resolveAppIcon();
+  // FR-9c: an explicit --window=<mode> placement wins over everything — it is
+  // computed from the primary workArea (on-screen by construction) and is
+  // deliberately NOT persisted, so the next flag-less launch returns to the
+  // normal maximize/restore behavior.
+  const placement =
+    instance.windowMode !== null ? placementBounds(instance.windowMode, instance.instanceId) : null;
   // FR-9b: restore the last geometry, clamped into a visible work area (a
   // position persisted on a since-unplugged monitor must not strand the
   // window off-screen). First run (nothing persisted) → default size,
   // maximized (FR-9a).
   const savedBounds = cachedSettings?.windowBounds;
-  const restore: WindowState | null = savedBounds
-    ? clampWindowState({
-        x: savedBounds.x,
-        y: savedBounds.y,
-        width: savedBounds.width,
-        height: savedBounds.height,
-        maximized: cachedSettings?.windowMaximized ?? true,
-      })
-    : null;
+  const restore: WindowState | null =
+    placement === null && savedBounds
+      ? clampWindowState({
+          x: savedBounds.x,
+          y: savedBounds.y,
+          width: savedBounds.width,
+          height: savedBounds.height,
+          maximized: cachedSettings?.windowMaximized ?? true,
+        })
+      : null;
   mainWindow = new BrowserWindow({
-    ...(restore
-      ? { x: restore.x, y: restore.y, width: restore.width, height: restore.height }
-      : { width: 1280, height: 800 }),
+    ...(placement
+      ? { x: placement.x, y: placement.y, width: placement.width, height: placement.height }
+      : restore
+        ? { x: restore.x, y: restore.y, width: restore.width, height: restore.height }
+        : { width: 1280, height: 800 }),
     minWidth: 900,
     minHeight: 600,
     // Hidden until first paint + maximize, so the window never flashes at
     // 1280×800 before growing (FR-9a of the requirements doc).
     show: false,
+    // FR-7: distinguish parallel instances at a glance in the title bar and
+    // taskbar. page-title-updated below keeps the renderer from overwriting
+    // it with the page's <title>.
+    title: instance.instanceId !== null ? `MultiZen — ${instance.instanceId}` : "MultiZen",
     titleBarStyle: "hiddenInset",
     backgroundColor: "#0a0b0f",
     icon: iconPath ?? undefined,
@@ -135,6 +148,7 @@ function createWindow(): void {
       contextIsolation: true,
     },
   });
+  mainWindow.on("page-title-updated", (e) => e.preventDefault());
 
   if (process.env.ELECTRON_RENDERER_URL) {
     void mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
@@ -144,18 +158,20 @@ function createWindow(): void {
   }
 
   // Open maximized by default. maximize() while still hidden, then reveal —
-  // the user's first frame is already the maximized window. When a NON-
-  // maximized geometry was restored, just reveal at that size.
+  // the user's first frame is already the maximized window. An explicit
+  // placement (FR-9c) or a restored NON-maximized geometry shows as-is.
   mainWindow.once("ready-to-show", () => {
-    if (restore === null || restore.maximized) mainWindow?.maximize();
+    if (placement === null && (restore === null || restore.maximized)) mainWindow?.maximize();
     mainWindow?.show();
   });
 
   // FR-9b: persist geometry on close — normal (non-maximized) bounds + the
   // maximized flag — through settingsStore.update(), whose internal cache is
   // file-truth, so a CLI --mcp-port override living only in the local
-  // cachedSettings copy can never leak into settings.json here.
+  // cachedSettings copy can never leak into settings.json here. Explicit
+  // --window placements are skipped: they're per-launch by design.
   mainWindow.on("close", () => {
+    if (placement !== null) return;
     const win = mainWindow;
     if (!win || win.isDestroyed() || !settingsStore) return;
     try {
@@ -348,6 +364,8 @@ app.whenReady().then(async () => {
     profileManager,
     chromiumBootstrap,
     extensionStoreRoot,
+    // FR-6 T2: ephemeral profiles materialize per-launch working copies here.
+    runsRoot: join(dataRoot, "runs"),
     // The companion's "Add to MultiZen" button routes here (profile-scoped).
     // Confirm natively first: any script on the store page could trigger the
     // channel, so an explicit OS dialog makes a drive-by install impossible.
@@ -842,6 +860,9 @@ app.whenReady().then(async () => {
 
   // System info
   ipcMain.handle("system:info", () => ({
+    // FR-7: which instance answered — shown in the MCP panel so multi-agent
+    // setups can tell their endpoints apart.
+    instanceId: instance.instanceId,
     mcpHttpUrl: httpTransport ? `http://127.0.0.1:${cachedSettings?.mcpHttpPort}` : null,
     // Bearer token an MCP client must send as `Authorization: Bearer <token>`.
     // Surfaced so the in-app panel can show a ready-to-paste client config.

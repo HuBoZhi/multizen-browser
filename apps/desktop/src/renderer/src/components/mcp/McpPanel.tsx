@@ -11,6 +11,8 @@ interface Props {
   mcpUrl: string | null;
   /** Bearer token every MCP client must send; null when the server is off. */
   mcpToken: string | null;
+  /** Multi-instance id this app runs as; null = default single instance. */
+  instanceId?: string | null;
 }
 
 /**
@@ -18,7 +20,7 @@ interface Props {
  * does. Top half = a "Connect an agent" card (endpoint + copy-paste client
  * config); bottom half = the live feed of MCP tool calls.
  */
-export function McpPanel({ events, profiles, mcpUrl, mcpToken }: Props): JSX.Element {
+export function McpPanel({ events, profiles, mcpUrl, mcpToken, instanceId }: Props): JSX.Element {
   const profilesById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
   const recent = useMemo(() => events.slice().reverse(), [events]);
 
@@ -28,6 +30,15 @@ export function McpPanel({ events, profiles, mcpUrl, mcpToken }: Props): JSX.Ele
         <div className="flex items-baseline gap-3 mb-1.5">
           <div className="text-lg font-bold tracking-tight text-slate-100">MCP</div>
           <div className="mono text-[11px] text-slate-600">·  {events.length} calls</div>
+          {instanceId && (
+            <span
+              className="mono text-[10px] px-2 py-0.5 rounded-md text-purple-300"
+              style={{ background: "rgba(168,85,247,0.10)", boxShadow: "inset 0 0 0 1px rgba(168,85,247,0.20)" }}
+              title="This app runs as a named multi-instance; this endpoint controls only this instance."
+            >
+              instance: {instanceId}
+            </span>
+          )}
         </div>
         <div className="text-[13px] text-slate-500 mb-5 leading-relaxed max-w-[68ch]">
           Drive your profiles from an AI agent. Point any MCP client (Claude Desktop, Cursor,
