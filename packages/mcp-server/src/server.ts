@@ -346,6 +346,8 @@ const UpdateProfileSchema = ProfileIdSchema.extend({
   // `null` clears the proxy; omitted leaves it untouched.
   proxy: ProxySchema.nullable().optional(),
   fingerprint: FingerprintInputSchema.optional(),
+  // Ephemeral working-copy mode: launches run on disposable copies.
+  ephemeral: z.boolean().optional(),
 });
 
 /**
@@ -476,6 +478,7 @@ async function dispatch(
       if (input.tags !== undefined) patch.tags = input.tags;
       // `proxy: null` clears it, `proxy: {…}` sets it, omitted leaves as-is.
       if (input.proxy !== undefined) patch.proxy = input.proxy;
+      if (input.ephemeral !== undefined) patch.ephemeral = input.ephemeral;
       if (input.fingerprint !== undefined) {
         patch.fingerprint = reconcileFingerprint(existing.fingerprint, input.fingerprint);
       }
@@ -833,7 +836,7 @@ const TOOL_DEFINITIONS = [
   {
     name: "update_profile",
     description:
-      "Update an existing profile's name, notes, tags, proxy, and/or fingerprint. Every field is optional — only the ones you pass change. Set `proxy` to null to remove it. Fingerprint changes are reconciled for coherence. If the profile is running, changes apply on the next launch (response includes appliesOnNextLaunch). Proxy credentials are never echoed back.",
+      "Update an existing profile's name, notes, tags, proxy, ephemeral flag, and/or fingerprint. Every field is optional — only the ones you pass change. Set `proxy` to null to remove it. `ephemeral: true` puts the profile in working-copy mode: every launch runs on a disposable copy (identity carries over) that is deleted when the browser exits, so the same identity can run in parallel safely. Fingerprint changes are reconciled for coherence. If the profile is running, changes apply on the next launch (response includes appliesOnNextLaunch). Proxy credentials are never echoed back.",
     inputSchema: {
       type: "object",
       required: ["profile_id"],
@@ -845,6 +848,11 @@ const TOOL_DEFINITIONS = [
         proxy: {
           description: "Proxy object to set, or null to clear. Omit to leave unchanged.",
           anyOf: [PROXY_JSON_SCHEMA, { type: "null" }],
+        },
+        ephemeral: {
+          type: "boolean",
+          description:
+            "Working-copy mode: run every launch on a disposable copy of this profile (deleted on browser exit). Omit to leave unchanged.",
         },
         fingerprint: FINGERPRINT_JSON_SCHEMA,
       },
