@@ -246,7 +246,7 @@ export function ProfileEditSheet({ profile, onSaved }: Props): JSX.Element {
               />
               <span>
                 Ephemeral runs (working-copy mode)
-                <span className="block text-[10px] text-slate-600 leading-relaxed mt-0.5">
+                <span className="block text-[10px] text-slate-400 leading-relaxed mt-0.5">
                   Launch on a disposable copy — cookies/logins carry over, changes are discarded
                   when the browser closes. The profile becomes a read-only template, safe to run
                   the same identity in parallel across instances.

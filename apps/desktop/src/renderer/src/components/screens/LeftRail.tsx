@@ -60,7 +60,7 @@ export function LeftRail({ active, onChange, onCmdK }: Props): JSX.Element {
         type="button"
         title="Command palette · ⌘K"
         onClick={onCmdK}
-        className="mb-3.5 w-9 h-9 rounded-[10px] flex items-center justify-center text-slate-600 hover:text-slate-300 hover:bg-white/5 transition-colors"
+        className="mb-3.5 w-9 h-9 rounded-[10px] flex items-center justify-center text-slate-400 hover:text-slate-300 hover:bg-white/5 transition-colors"
       >
         <Command size={16} strokeWidth={1.5} />
       </button>

@@ -52,7 +52,7 @@ export function TopBar({ totalCount, runningCount, mcpUrl, onCmdK, onSettings }:
           padding: "6px 12px",
           borderRadius: 10,
           background: "rgba(255,255,255,0.03)",
-          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
         }}
       >
         <Search size={14} className="text-slate-500" />
@@ -67,7 +67,7 @@ export function TopBar({ totalCount, runningCount, mcpUrl, onCmdK, onSettings }:
         <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
           <span className="mono text-slate-300 text-[12px]">{runningCount}</span>
           <span>running</span>
-          <span className="text-slate-600">·</span>
+          <span className="text-slate-400">·</span>
           <span className="mono text-slate-400 text-[12px]">{totalCount}</span>
           <span>total</span>
         </div>

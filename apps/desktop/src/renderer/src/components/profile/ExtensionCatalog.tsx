@@ -38,7 +38,7 @@ export function ExtensionCatalog({
 
   if (CATALOG_EXTENSIONS.length === 0) {
     return (
-      <div className="text-[11px] text-slate-600 leading-relaxed px-1 py-2">
+      <div className="text-[11px] text-slate-400 leading-relaxed px-1 py-2">
         The extension catalog is empty in this build. Add extensions by Chrome Web Store URL or
         ID above.
       </div>
@@ -55,12 +55,12 @@ export function ExtensionCatalog({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search the catalog…"
-          className="flex-1 bg-transparent text-[12px] text-slate-200 placeholder:text-slate-600 outline-none"
+          className="flex-1 bg-transparent text-[12px] text-slate-200 placeholder:text-slate-400 outline-none"
         />
       </div>
 
       {groups.length === 0 ? (
-        <div className="text-[11px] text-slate-600 px-1 py-2">No matches.</div>
+        <div className="text-[11px] text-slate-400 px-1 py-2">No matches.</div>
       ) : (
         <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
           {groups.map(({ cat, items }) => (
@@ -77,7 +77,7 @@ export function ExtensionCatalog({
                     className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
                     style={{
                       background: "rgba(255,255,255,0.03)",
-                      boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
+                      boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
                     }}
                   >
                     <ExtIcon id={ext.id} />

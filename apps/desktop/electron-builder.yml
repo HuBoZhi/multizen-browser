@@ -49,6 +49,10 @@ asarUnpack:
 extraResources:
   - from: resources/companion
     to: companion
+  # Runtime window icon (resolveAppIcon looks for <resources>/icon.png) —
+  # covers alt-tab / taskbar previews independent of the exe-embedded icon.
+  - from: ../../build/icon.png
+    to: icon.png
 
 # Stable artifact names — no version baked in. The GitHub Releases page
 # still surfaces the version (from package.json) in the release title,
@@ -96,7 +100,12 @@ win:
         - x64
   artifactName: "${productName}-win-${arch}.${ext}"
   icon: ../../build/icon.png
-  signAndEditExecutable: false
+  # FORK CHANGE: upstream disables rcedit because CI signs externally. We ship
+  # unsigned, and with editing disabled the exe keeps the STOCK ELECTRON icon
+  # and no version metadata — rcedit is what embeds build/icon.png into the
+  # binary. Must stay enabled (default) for the taskbar/title icon.
+
+
 
 linux:
   target:

@@ -192,7 +192,7 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
           {[...grouped.entries()].map(([group, groupRows]) => (
             <div key={group}>
               <div
-                className="uppercase tracking-wider text-slate-600"
+                className="uppercase tracking-wider text-slate-400"
                 style={{
                   padding: "8px 18px 4px",
                   fontSize: 9,

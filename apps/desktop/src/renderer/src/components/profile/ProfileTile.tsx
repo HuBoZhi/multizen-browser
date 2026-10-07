@@ -148,7 +148,7 @@ export function ProfileTile({
       className="flex flex-col gap-2.5 p-3.5 relative transition-all h-full"
       style={{
         borderRadius: 18,
-        background: "rgba(255,255,255,0.025)",
+        background: "rgba(255,255,255,0.04)",
         boxShadow: `inset 0 0 0 1px ${RING_BY_STATE[profile.state]}, 0 24px 48px -16px rgba(0,0,0,0.5), ${GLOW_BY_STATE[profile.state]}`,
         backdropFilter: "blur(20px)",
         transitionTimingFunction: "cubic-bezier(0.2,0.8,0.2,1)",
@@ -179,7 +179,7 @@ export function ProfileTile({
             <div className="font-semibold text-[13px] leading-tight text-slate-100 truncate hover:text-white transition-colors">
               {profile.name}
             </div>
-            <div className="mono text-[10px] text-slate-600 mt-[3px] truncate">
+            <div className="mono text-[10px] text-slate-400 mt-[3px] truncate">
               {profile.id.slice(0, 12)}
             </div>
           </div>
@@ -196,14 +196,14 @@ export function ProfileTile({
               className="mz-pill mono text-slate-400"
               style={{
                 background: "rgba(255,255,255,0.04)",
-                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)",
+                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.10)",
               }}
             >
               {t}
             </span>
           ))}
           {profile.tags.length > 4 && (
-            <span className="mz-pill mono text-slate-600">+{profile.tags.length - 4}</span>
+            <span className="mz-pill mono text-slate-400">+{profile.tags.length - 4}</span>
           )}
         </div>
       )}
@@ -215,7 +215,7 @@ export function ProfileTile({
       <ContextLine profile={profile} />
 
       {/* Bottom meta — platform + last opened */}
-      <div className="flex items-center gap-1.5 mono text-[10px] text-slate-600 leading-tight">
+      <div className="flex items-center gap-1.5 mono text-[10px] text-slate-400 leading-tight">
         <PlatformIcon
           platform={platformFromDeviceFamily(profile.device)}
           size={12}
@@ -224,7 +224,7 @@ export function ProfileTile({
         <span className="text-slate-500">
           {platformLabel(platformFromDeviceFamily(profile.device))}
         </span>
-        <span className="text-slate-700">·</span>
+        <span className="text-slate-500">·</span>
         <span className="truncate">
           {profile.lastOpenedAt ? relativeTime(profile.lastOpenedAt) : "never opened"}
         </span>
@@ -259,7 +259,7 @@ export function ProfileTile({
                     ephemeral
                   </span>
                 )}
-                <span className="mono text-[9px] text-slate-600 ml-auto flex-shrink-0">
+                <span className="mono text-[9px] text-slate-400 ml-auto flex-shrink-0">
                   {relativeTime(r.startedAt)}
                 </span>
                 <button
@@ -340,10 +340,10 @@ function ProxyHealthRow({ profile }: { profile: TileData }): JSX.Element {
     return (
       <div
         className="flex items-center gap-2 px-2.5 py-2 rounded-[11px]"
-        style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)" }}
+        style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)" }}
       >
         <span className="text-[12px] font-semibold text-slate-400 truncate">Direct — no proxy</span>
-        <span className="ml-auto mono text-[10px] text-slate-600">host DNS</span>
+        <span className="ml-auto mono text-[10px] text-slate-400">host DNS</span>
       </div>
     );
   }
@@ -395,7 +395,7 @@ function ProxyHealthRow({ profile }: { profile: TileData }): JSX.Element {
       {health.status === "ok" && (
         <span className="ml-auto inline-flex items-center gap-1.5">
           {profile.proxy && (
-            <span className="mono text-[10px] text-slate-600">proxy</span>
+            <span className="mono text-[10px] text-slate-400">proxy</span>
           )}
           <span
             className="w-[7px] h-[7px] rounded-full bg-emerald-500"

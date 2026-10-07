@@ -112,7 +112,7 @@ export function Input({
           : undefined
       }
       placeholder={placeholder}
-      className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 placeholder:text-slate-600 outline-none focus:bg-white/[0.05] transition-colors"
+      className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 placeholder:text-slate-400 outline-none focus:bg-white/[0.05] transition-colors"
       style={{
         boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
         fontFamily: mono ? "var(--font-mono)" : "var(--font-sans)",
@@ -139,7 +139,7 @@ export function Textarea({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
-      className="w-full px-2.5 py-2 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 placeholder:text-slate-600 outline-none focus:bg-white/[0.05] transition-colors resize-none"
+      className="w-full px-2.5 py-2 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 placeholder:text-slate-400 outline-none focus:bg-white/[0.05] transition-colors resize-none"
       style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)", fontFamily: "var(--font-sans)" }}
     />
   );

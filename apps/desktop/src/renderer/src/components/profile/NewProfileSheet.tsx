@@ -208,7 +208,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Optional — what this profile is for"
                   rows={3}
-                  className="w-full px-2.5 py-2 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 placeholder:text-slate-600 outline-none focus:bg-white/[0.05] transition-colors resize-none"
+                  className="w-full px-2.5 py-2 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 placeholder:text-slate-400 outline-none focus:bg-white/[0.05] transition-colors resize-none"
                   style={{
                     boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
                     fontFamily: "var(--font-sans)",
@@ -322,7 +322,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
                 proxy={proxyForForm}
               />
             ) : (
-              <div className="text-[11px] text-slate-600">Loading preset…</div>
+              <div className="text-[11px] text-slate-400">Loading preset…</div>
             ))}
         </div>
       </div>

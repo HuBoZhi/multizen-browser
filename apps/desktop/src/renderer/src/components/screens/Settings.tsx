@@ -124,7 +124,7 @@ export function Settings({ onImport }: Props): JSX.Element {
                   padding: "8px 12px",
                   borderRadius: 10,
                   background: "rgba(255,255,255,0.03)",
-                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
+                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
                 }}
               >
                 <span className="flex-1 mono text-[12px] text-slate-300 truncate">
@@ -155,7 +155,7 @@ export function Settings({ onImport }: Props): JSX.Element {
                   padding: "8px 12px",
                   borderRadius: 10,
                   background: "rgba(255,255,255,0.03)",
-                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
+                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
                 }}
               >
                 <span className="flex-1 mono text-[12px] text-slate-300 truncate">
@@ -210,7 +210,7 @@ export function Settings({ onImport }: Props): JSX.Element {
                     boxShadow: selected
                       ? "inset 0 0 0 1px rgba(168,85,247,0.45)"
                       : "inset 0 0 0 1px rgba(255,255,255,0.07)",
-                    background: selected ? "rgba(168,85,247,0.08)" : "rgba(255,255,255,0.025)",
+                    background: selected ? "rgba(168,85,247,0.08)" : "rgba(255,255,255,0.04)",
                   }}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -314,7 +314,7 @@ export function Settings({ onImport }: Props): JSX.Element {
             </button>
             <span className="text-[12px] text-slate-400">{updateLabel(updateStatus)}</span>
           </div>
-          <div className="text-[11px] text-slate-600 mt-2">
+          <div className="text-[11px] text-slate-400 mt-2">
             Last checked: {lastChecked ? relativeTime(new Date(lastChecked).toISOString()) : "never"}
           </div>
           <label className="flex items-center gap-2.5 mt-3 text-[12px] text-slate-400 cursor-pointer">
@@ -342,7 +342,7 @@ export function Settings({ onImport }: Props): JSX.Element {
             />
             Send an anonymous daily heartbeat
           </label>
-          <div className="text-[11px] text-slate-600 mt-2 leading-relaxed">
+          <div className="text-[11px] text-slate-400 mt-2 leading-relaxed">
             When on, sends once a day: app version, OS family, and a random
             single-use token — <b>no</b> account, <b>no</b> persistent ID, and your IP is
             never stored (a coarse country is derived server-side then discarded). No

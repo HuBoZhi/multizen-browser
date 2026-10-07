@@ -52,8 +52,8 @@ export function ProfileTable({
     <div
       className="rounded-xl overflow-hidden"
       style={{
-        background: "rgba(255,255,255,0.02)",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)",
+        background: "rgba(255,255,255,0.035)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.10)",
       }}
     >
       {/* Header */}
@@ -70,7 +70,7 @@ export function ProfileTable({
         {COLUMNS.map((c, i) => (
           <div
             key={c.label || `col-${i}`}
-            className="text-[10px] font-semibold tracking-wider uppercase text-slate-600"
+            className="text-[10px] font-semibold tracking-wider uppercase text-slate-400"
             style={{ textAlign: c.align ?? "left" }}
           >
             {c.label}

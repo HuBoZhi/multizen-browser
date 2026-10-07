@@ -106,7 +106,7 @@ export function Constellation({
       {/* Title row */}
       <div className="flex items-center gap-3.5 px-6 pt-4 pb-3">
         <div className="text-lg font-bold tracking-tight text-slate-100">All profiles</div>
-        <div className="mono text-[11px] text-slate-600">
+        <div className="mono text-[11px] text-slate-400">
           ·  {profiles.length} total · {counts.running + counts.ai} running
           {aiCount > 0 && ` · ${aiCount} driven by Claude`}
         </div>
@@ -115,7 +115,7 @@ export function Constellation({
           className="flex gap-1 p-[3px] rounded-lg"
           style={{
             background: "rgba(255,255,255,0.03)",
-            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
+            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
           }}
         >
           <button
@@ -187,7 +187,7 @@ export function Constellation({
                 />
               )}
               {c.label}
-              <span className={cn("mono text-[10px]", isActive ? "text-slate-400" : "text-slate-600")}>
+              <span className={cn("mono text-[10px]", isActive ? "text-slate-400" : "text-slate-400")}>
                 {counts[c.id]}
               </span>
             </button>
@@ -212,7 +212,7 @@ export function Constellation({
                     background: isActive ? "rgba(168,85,247,0.10)" : "rgba(255,255,255,0.03)",
                     boxShadow: isActive
                       ? "inset 0 0 0 1px rgba(168,85,247,0.25)"
-                      : "inset 0 0 0 1px rgba(255,255,255,0.05)",
+                      : "inset 0 0 0 1px rgba(255,255,255,0.10)",
                   }}
                 >
                   {t}

@@ -32,7 +32,7 @@ export function McpPanel({ events, profiles, runs, mcpUrl, mcpToken, instanceId 
       <div className="max-w-[960px] mx-auto">
         <div className="flex items-baseline gap-3 mb-1.5">
           <div className="text-lg font-bold tracking-tight text-slate-100">MCP</div>
-          <div className="mono text-[11px] text-slate-600">·  {events.length} calls</div>
+          <div className="mono text-[11px] text-slate-400">·  {events.length} calls</div>
           {instanceId && (
             <span
               className="mono text-[10px] px-2 py-0.5 rounded-md text-purple-300"
@@ -56,7 +56,7 @@ export function McpPanel({ events, profiles, runs, mcpUrl, mcpToken, instanceId 
         {/* Live feed */}
         <div className="flex items-baseline gap-2.5 mt-7 mb-2.5">
           <div className="text-[13px] font-semibold text-slate-200">Live tool calls</div>
-          <div className="mono text-[10px] text-slate-600">{events.length} total</div>
+          <div className="mono text-[10px] text-slate-400">{events.length} total</div>
         </div>
 
         {recent.length === 0 ? (
@@ -65,8 +65,8 @@ export function McpPanel({ events, profiles, runs, mcpUrl, mcpToken, instanceId 
             style={{
               padding: 40,
               borderRadius: 18,
-              background: "rgba(255,255,255,0.02)",
-              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)",
+              background: "rgba(255,255,255,0.035)",
+              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.10)",
             }}
           >
             <div className="text-[13px] font-semibold text-slate-100">No agent calls yet</div>
@@ -170,8 +170,8 @@ function ConnectCard({
     <div
       style={{
         borderRadius: 18,
-        background: "rgba(255,255,255,0.025)",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06), 0 24px 48px -24px rgba(0,0,0,0.5)",
+        background: "rgba(255,255,255,0.04)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12), 0 24px 48px -24px rgba(0,0,0,0.5)",
         padding: 18,
       }}
     >
@@ -245,7 +245,7 @@ function ConnectCard({
               </div>
               <CopyRow value={codexConfig} mono block />
               <div className="flex items-start gap-1.5 mt-2 text-[11px] text-slate-500 leading-relaxed">
-                <Terminal size={12} className="mt-[2px] flex-shrink-0 text-slate-600" />
+                <Terminal size={12} className="mt-[2px] flex-shrink-0 text-slate-400" />
                 <span>
                   The <code className="text-slate-400">url</code> field needs a Codex build with
                   streamable-HTTP MCP support. On older Codex (stdio only), use the{" "}
@@ -265,7 +265,7 @@ function ConnectCard({
               </div>
               <CopyRow value={stdioConfig} mono block />
               <div className="flex items-start gap-1.5 mt-2 text-[11px] text-slate-500 leading-relaxed">
-                <Terminal size={12} className="mt-[2px] flex-shrink-0 text-slate-600" />
+                <Terminal size={12} className="mt-[2px] flex-shrink-0 text-slate-400" />
                 <span>
                   Claude Desktop&apos;s config has no <code className="text-slate-400">url</code>{" "}
                   field, so it bridges the endpoint through{" "}
@@ -330,7 +330,7 @@ function CopyRow({
       style={{
         borderRadius: 10,
         background: "rgba(0,0,0,0.25)",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
         padding: block ? "10px 10px 10px 12px" : "9px 9px 9px 12px",
       }}
     >
@@ -478,8 +478,8 @@ function RunsCard({ runs }: { runs: RunInfo[] }): JSX.Element {
       className="mt-4"
       style={{
         borderRadius: 18,
-        background: "rgba(255,255,255,0.02)",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
+        background: "rgba(255,255,255,0.035)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
         padding: 18,
       }}
     >
@@ -515,7 +515,7 @@ function RunsCard({ runs }: { runs: RunInfo[] }): JSX.Element {
             style={{
               borderRadius: 12,
               background: "rgba(0,0,0,0.2)",
-              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)",
+              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.10)",
               padding: 12,
             }}
           >
@@ -532,7 +532,7 @@ function RunsCard({ runs }: { runs: RunInfo[] }): JSX.Element {
                   ephemeral
                 </span>
               )}
-              <span className="mono text-[10px] text-slate-600 ml-auto truncate">
+              <span className="mono text-[10px] text-slate-400 ml-auto truncate">
                 run {r.runId.slice(-6)} · since {formatTime(r.startedAt)}
               </span>
             </div>

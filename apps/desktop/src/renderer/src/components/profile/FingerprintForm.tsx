@@ -204,12 +204,12 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
       <div
         className="px-2.5 py-2 rounded-lg text-[10px] mono text-slate-500 leading-relaxed truncate"
         style={{
-          background: "rgba(255,255,255,0.02)",
-          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)",
+          background: "rgba(255,255,255,0.035)",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.10)",
         }}
         title={fingerprint.userAgent}
       >
-        <span className="text-slate-600">UA · </span>
+        <span className="text-slate-400">UA · </span>
         {shortUA(fingerprint.userAgent)}
       </div>
 

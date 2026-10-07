@@ -128,10 +128,10 @@ export function ProfileRow({
             </div>
             <ChevronRight
               size={12}
-              className="text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+              className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
             />
           </div>
-          <div className="flex items-center gap-1.5 mono text-[10px] text-slate-600 truncate">
+          <div className="flex items-center gap-1.5 mono text-[10px] text-slate-400 truncate">
             <PlatformIcon
               platform={platformFromDeviceFamily(profile.device)}
               size={11}
@@ -140,7 +140,7 @@ export function ProfileRow({
             <span className="text-slate-500 flex-shrink-0">
               {platformLabel(platformFromDeviceFamily(profile.device))}
             </span>
-            <span className="text-slate-700 flex-shrink-0">·</span>
+            <span className="text-slate-500 flex-shrink-0">·</span>
             <span className="truncate">{profile.id.slice(0, 12)}</span>
           </div>
         </div>
@@ -159,7 +159,7 @@ export function ProfileRow({
             className="mz-pill mono text-slate-400 truncate"
             style={{
               background: "rgba(255,255,255,0.04)",
-              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)",
+              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.10)",
               maxWidth: 90,
             }}
           >
@@ -167,7 +167,7 @@ export function ProfileRow({
           </span>
         ))}
         {profile.tags.length > 3 && (
-          <span className="mz-pill mono text-slate-600 flex-shrink-0">
+          <span className="mz-pill mono text-slate-400 flex-shrink-0">
             +{profile.tags.length - 3}
           </span>
         )}
@@ -280,7 +280,7 @@ function RowProxyHealth({ profile }: { profile: TileData }): JSX.Element {
 
   if (health.status === "direct") {
     return (
-      <div className="flex items-center gap-1.5 mono text-[11px] text-slate-600 min-w-0">
+      <div className="flex items-center gap-1.5 mono text-[11px] text-slate-400 min-w-0">
         <span className="truncate">direct</span>
       </div>
     );

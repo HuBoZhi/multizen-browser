@@ -131,7 +131,7 @@ function LiveExtensions({ profileId }: { profileId: string }): JSX.Element {
         />
       )}
 
-      <div className="text-[11px] text-slate-600 leading-relaxed">
+      <div className="text-[11px] text-slate-400 leading-relaxed">
         Or open the Chrome Web Store inside this profile and click <b>Add to MultiZen</b>.
         Changes apply on the next launch.
       </div>
@@ -263,11 +263,11 @@ function StagingExtensions({
       {showAttach && (
         <div className="space-y-1.5">
           {available === null ? (
-            <div className="text-[11px] text-slate-600 flex items-center gap-1.5">
+            <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
               <Loader2 size={11} className="animate-spin" /> Loading…
             </div>
           ) : attachable.length === 0 ? (
-            <div className="text-[11px] text-slate-600 leading-relaxed">
+            <div className="text-[11px] text-slate-400 leading-relaxed">
               No other extensions in your library yet. Add one above and it becomes attachable
               to future profiles.
             </div>
@@ -280,7 +280,7 @@ function StagingExtensions({
                 className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors hover:bg-white/[0.05]"
                 style={{
                   background: "rgba(255,255,255,0.03)",
-                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
+                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
                 }}
               >
                 <ExtIcon id={ext.id} ext={ext} profileId={null} />
@@ -292,7 +292,7 @@ function StagingExtensions({
         </div>
       )}
 
-      <div className="text-[11px] text-slate-600 leading-relaxed">
+      <div className="text-[11px] text-slate-400 leading-relaxed">
         Extensions load on first launch. Login/state is not copied — attached extensions start
         fresh in this profile.
       </div>
@@ -320,7 +320,7 @@ function ExtRow({
       className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
       style={{
         background: "rgba(255,255,255,0.03)",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
       }}
     >
       <ExtIcon id={ext.id} ext={ext} profileId={profileId} />
@@ -368,7 +368,7 @@ function AddRow({
           value={url}
           onChange={(e) => onUrl(e.target.value)}
           placeholder="Chrome Web Store URL or extension ID"
-          className="flex-1 px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 placeholder:text-slate-600 outline-none focus:bg-white/[0.05] transition-colors"
+          className="flex-1 px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 placeholder:text-slate-400 outline-none focus:bg-white/[0.05] transition-colors"
           style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
         />
         <button
