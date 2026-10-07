@@ -40,6 +40,8 @@ MultiZen is a desktop app that runs a library of isolated Chromium browser profi
 
 The result: your AI agent in Cursor or Claude Desktop can complete real authenticated workflows. Cookies and session state survive between launches, so logins and context carry over across AI sessions.
 
+MultiZen also scales sideways: run several isolated app instances, or several browsers of the same profile — every live browser gets its own MCP endpoint, so multiple agents can each drive their own browser in parallel (see [Parallel agents](#parallel-agents-instances-and-per-run-endpoints)).
+
 ## Install
 
 ### macOS
@@ -112,6 +114,9 @@ Each profile is a real Chromium window with persistent state on disk. The MCP se
 | **MCP server** | Native localhost endpoint. Works with Cursor, Claude Desktop, Cline, Continue, anything else that speaks MCP. |
 | **Anti-detect Chromium** | Source-patched browser engine (CloakBrowser). Canvas, WebGL, audio, fonts, WebRTC IP all spoofed at C++ level instead of JS injection. |
 | **Persistent state** | Cookies, login, IndexedDB, localStorage stay per-profile across launches and across AI sessions. |
+| **Parallel agents** | Run several named app instances (`--instance-id`) with isolated data, or several browsers of one profile. Every live browser run exposes its own MCP endpoint (port + token) for a dedicated agent. |
+| **Ephemeral profiles** | Flag a profile as ephemeral: each launch materializes a disposable working copy (identity and cookies copied, caches skipped) that is deleted on close — the template stays pristine. |
+| **Fresh launches** | Every browser opens exactly one tab: the profile's start page. No tab restore between runs; logins and storage persist as always. |
 | **Cross-platform persona** | Run a Windows persona on a Mac host (or vice versa). C++ patches keep the fingerprint coherent across V8, Blink, and CSS feature signatures. |
 | **Proxy + persona alignment** | Per-profile HTTP or SOCKS5 proxy with a local SOCKS5 bridge so DNS resolution stays remote. Auto-aligns timezone, locale, and `navigator.geolocation` to the proxy egress IP. |
 | **Self-hosted** | Profiles live on your disk in plain SQLite plus Chromium user-data-dir format. No account, no license server, no telemetry. |
@@ -172,7 +177,48 @@ http_headers = { Authorization = "Bearer <token>" }
 }
 ```
 
-Restart your client. The agent now has the full tool set — profile lifecycle (`list_profiles`, `launch_profile`, `close_profile`), page driving (`navigate`, `click`, `type`, `extract`, `screenshot`, `evaluate_js`), tabs (`list_tabs`, `new_tab`, `activate_tab`, `close_tab`), cookies (`get_cookies`, `set_cookies`), waits (`wait_for_load`, `wait_for_navigation`, `wait_for_selector`), and raw `cdp_send`.
+Restart your client. The agent now has the full tool set — profiles (`list_profiles`, `create_profile`, `update_profile`, `delete_profile`, `launch_profile`, `close_profile`), runs (`list_runs`, `close_run`), page driving (`navigate`, `click`, `type`, `extract`, `screenshot`, `evaluate_js`), tabs (`list_tabs`, `new_tab`, `activate_tab`, `close_tab`), cookies (`get_cookies`, `set_cookies`), waits (`wait_for_load`, `wait_for_navigation`, `wait_for_selector`), fingerprints (`list_fingerprint_options`), and raw `cdp_send`.
+
+## Parallel agents: instances and per-run endpoints
+
+Two levels of parallelism, both fully local.
+
+### Named app instances
+
+Launch the app multiple times, each with its own profiles database, settings, and MCP token — all sharing one engine download:
+
+```sh
+MultiZen.exe --instance-id=A --mcp-port=12001 --data-dir="D:\MultiZenData"
+MultiZen.exe --instance-id=B --mcp-port=12002 --data-dir="D:\MultiZenData" --launch-profile=Work
+```
+
+| Flag | Effect |
+| --- | --- |
+| `--instance-id=<id>` | Run as a named instance (shown in the window title and MCP panel). Launching the same id twice is refused and focuses the existing window. |
+| `--data-dir=<path>` | Root for instance data. With an id: `<path>/<id>`; alone: the path itself; an id alone: `<userData>/instances/<id>`. |
+| `--mcp-port=<n>` | MCP port for this instance. Priority: CLI > `MULTIZEN_MCP_PORT` > settings > 7777. An explicitly requested busy port fails loudly instead of starting silently without MCP. |
+| `--launch-profile=<id\|name>` | Auto-launch that profile once the MCP server is up — agents can connect immediately, no GUI click needed. |
+| `--import-profile=<file.mzar>` | Import an encrypted profile archive at startup (`--import-passphrase` supplies the key); pair with `--launch-profile` for scripted spin-ups. |
+| `--window=<mode>` | `cascade`, `tile-left`, `tile-right`, or `quad-1..4` window placement — always inside the primary display's work area, never off-screen. |
+
+### Several browsers per profile (runs)
+
+A profile card's **New instance** button (or launching an already-running profile) starts another browser of the same profile. The first run uses the profile's persistent data; each additional run gets a throwaway working copy, so parallel runs never touch the original.
+
+Every live run has its **own MCP endpoint** — its own port and bearer token:
+
+- `list_runs` on the management endpoint returns each run's URL and token (the app's MCP panel shows the same list with copy buttons);
+- point an agent at a run's endpoint and every browser tool acts on exactly that browser — no ambiguity, no sharing;
+- on the management endpoint, `profile_id` calls work only while the profile has exactly one live run — with several, the call is refused and points you at the per-run endpoints;
+- `close_run` stops one run by id, leaving sibling instances running.
+
+### Ephemeral profiles
+
+Mark a profile **Ephemeral** in its editor (or `update_profile` with `ephemeral: true`): every launch materializes a fresh working copy from the template — identity, cookies, and fingerprint included — and the copy is deleted when the browser closes. Good for parallel one-shot tasks where the template must stay pristine.
+
+### Fresh launches
+
+Every launch opens exactly one tab: the profile's start page (DuckDuckGo by default — set it to `about:blank` for a bare window). Tabs from previous runs are never restored, and the "Restore pages?" bubble after a crashed run is suppressed. Cookies, logins, and storage still persist per profile across runs.
 
 ## Stack
 
