@@ -164,7 +164,7 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
           width: 600,
           borderRadius: 16,
           background: "rgba(15,16,22,0.92)",
-          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.10), 0 30px 80px rgba(0,0,0,0.6)",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17), 0 30px 80px rgba(0,0,0,0.6)",
           backdropFilter: "blur(24px)",
           overflow: "hidden",
           animation: "mz-slide-up 140ms cubic-bezier(0.2,0.8,0.2,1)",
@@ -182,7 +182,7 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search profiles, tags, actions…"
-            className="flex-1 bg-transparent outline-none text-[14px] text-slate-100 placeholder:text-slate-500"
+            className="flex-1 bg-transparent outline-none text-[14px] text-slate-100 placeholder:text-slate-400"
           />
           <Kbd>esc</Kbd>
         </div>
@@ -232,7 +232,7 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
                       >
                         {row.title}
                       </div>
-                      {row.sub && <div className="mono text-[10px] text-slate-500 mt-[3px] truncate">{row.sub}</div>}
+                      {row.sub && <div className="mono text-[10px] text-slate-400 mt-[3px] truncate">{row.sub}</div>}
                     </div>
                     {row.kbd}
                   </button>
@@ -241,7 +241,7 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
             </div>
           ))}
           {rows.length === 0 && (
-            <div className="px-6 py-10 text-center text-[12px] text-slate-500">
+            <div className="px-6 py-10 text-center text-[12px] text-slate-400">
               No matches. Press <Kbd>⌘ N</Kbd> to create a new profile.
             </div>
           )}
@@ -249,7 +249,7 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
 
         {/* Footer */}
         <div
-          className="flex items-center gap-3 px-[18px] py-2 text-[11px] text-slate-500"
+          className="flex items-center gap-3 px-[18px] py-2 text-[11px] text-slate-400"
           style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
         >
           <span className="flex items-center gap-1.5">

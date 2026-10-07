@@ -167,7 +167,7 @@ export function Modal({
           background: "rgba(15,16,22,0.96)",
           borderRadius: 18,
           boxShadow:
-            "inset 0 0 0 1px rgba(255,255,255,0.08), 0 36px 96px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(168,85,247,0.06)",
+            "inset 0 0 0 1px rgba(255,255,255,0.15), 0 36px 96px -24px rgba(0,0,0,0.7), 0 0 0 1px rgba(168,85,247,0.06)",
           backdropFilter: "blur(24px)",
           WebkitBackdropFilter: "blur(24px)",
           animation: "mz-modal-pop 220ms cubic-bezier(0.2,0.8,0.2,1)",
@@ -185,14 +185,14 @@ export function Modal({
                 </div>
               )}
               {subtitle && (
-                <div className="text-[12px] text-slate-500 mt-1">{subtitle}</div>
+                <div className="text-[12px] text-slate-400 mt-1">{subtitle}</div>
               )}
             </div>
             <button
               type="button"
               onClick={() => void tryClose()}
               aria-label="Close"
-              className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-200 hover:bg-white/[0.06] transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] transition-colors"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 6 6 18" />

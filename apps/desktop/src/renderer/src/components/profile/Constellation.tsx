@@ -118,7 +118,7 @@ export function Constellation({
           className="flex gap-1 p-[3px] rounded-lg"
           style={{
             background: "rgba(255,255,255,0.03)",
-            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
+            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.19)",
           }}
         >
           <button
@@ -128,7 +128,7 @@ export function Constellation({
               "w-7 h-6 rounded-md flex items-center justify-center transition-colors",
               viewMode === "grid"
                 ? "text-slate-100"
-                : "text-slate-500 hover:text-slate-300",
+                : "text-slate-400 hover:text-slate-300",
             )}
             style={{
               background: viewMode === "grid" ? "rgba(255,255,255,0.06)" : undefined,
@@ -144,7 +144,7 @@ export function Constellation({
               "w-7 h-6 rounded-md flex items-center justify-center transition-colors",
               viewMode === "list"
                 ? "text-slate-100"
-                : "text-slate-500 hover:text-slate-300",
+                : "text-slate-400 hover:text-slate-300",
             )}
             style={{
               background: viewMode === "list" ? "rgba(255,255,255,0.06)" : undefined,
@@ -176,11 +176,11 @@ export function Constellation({
               onClick={() => setFilter(c.id)}
               className={cn(
                 "flex items-center gap-1.5 px-2.5 py-[5px] rounded-lg text-[12px] font-medium transition-colors",
-                isActive ? "text-slate-100" : "text-slate-500 hover:text-slate-300",
+                isActive ? "text-slate-100" : "text-slate-400 hover:text-slate-300",
               )}
               style={{
                 background: isActive ? "rgba(255,255,255,0.06)" : undefined,
-                boxShadow: isActive ? "inset 0 0 0 1px rgba(255,255,255,0.08)" : undefined,
+                boxShadow: isActive ? "inset 0 0 0 1px rgba(255,255,255,0.15)" : undefined,
               }}
             >
               {c.kind && (
@@ -209,13 +209,13 @@ export function Constellation({
                   onClick={() => setActiveTag(isActive ? null : t)}
                   className={cn(
                     "mz-pill mono cursor-pointer transition-colors",
-                    isActive ? "text-purple-300" : "text-slate-500 hover:text-slate-300",
+                    isActive ? "text-purple-300" : "text-slate-400 hover:text-slate-300",
                   )}
                   style={{
                     background: isActive ? "rgba(168,85,247,0.10)" : "rgba(255,255,255,0.03)",
                     boxShadow: isActive
                       ? "inset 0 0 0 1px rgba(168,85,247,0.25)"
-                      : "inset 0 0 0 1px rgba(255,255,255,0.10)",
+                      : "inset 0 0 0 1px rgba(255,255,255,0.17)",
                   }}
                 >
                   {t}
@@ -231,7 +231,7 @@ export function Constellation({
           (box-shadow extends ~32px outside the tile). */}
       <div className="flex-1 overflow-auto px-6 pb-6 pt-3">
         {filtered.length === 0 ? (
-          <div className="text-sm text-slate-500 py-12 text-center">
+          <div className="text-sm text-slate-400 py-12 text-center">
             No profiles match the current filter.
           </div>
         ) : viewMode === "list" ? (

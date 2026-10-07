@@ -73,7 +73,7 @@ export function SectionRail({
 export function Field({ label, children }: { label: string; children: ReactNode }): JSX.Element {
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="text-[11px] font-medium text-slate-500">{label}</div>
+      <div className="text-[11px] font-medium text-slate-400">{label}</div>
       {children}
     </div>
   );
@@ -114,7 +114,7 @@ export function Input({
       placeholder={placeholder}
       className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 placeholder:text-slate-400 outline-none focus:bg-white/[0.05] transition-colors"
       style={{
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)",
         fontFamily: mono ? "var(--font-mono)" : "var(--font-sans)",
         fontWeight: mono ? 500 : 400,
       }}
@@ -140,7 +140,7 @@ export function Textarea({
       placeholder={placeholder}
       rows={rows}
       className="w-full px-2.5 py-2 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 placeholder:text-slate-400 outline-none focus:bg-white/[0.05] transition-colors resize-none"
-      style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)", fontFamily: "var(--font-sans)" }}
+      style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)", fontFamily: "var(--font-sans)" }}
     />
   );
 }

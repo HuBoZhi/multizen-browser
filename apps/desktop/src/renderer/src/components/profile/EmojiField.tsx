@@ -76,10 +76,10 @@ export function EmojiField({
             className="flex items-center justify-between px-3 py-2"
             style={{
               background: "rgba(15,16,22,0.98)",
-              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
+              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)",
             }}
           >
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">
               Emoji avatar
             </span>
             <button

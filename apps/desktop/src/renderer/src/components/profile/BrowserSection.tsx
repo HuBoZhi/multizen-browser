@@ -32,13 +32,13 @@ export function BrowserSection({
           onChange={(e) => onStartUrl(e.target.value)}
           placeholder={DEFAULT_START_URL}
           className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 outline-none placeholder:text-slate-400"
-          style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
+          style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)" }}
         />
       </SectionField>
 
       <p className="text-[10px] text-slate-400 leading-relaxed">
         Opens on a profile's first launch (later launches restore your tabs). Leave the default
-        or set your own — any http(s) URL, or <code className="text-slate-500">about:blank</code>.
+        or set your own — any http(s) URL, or <code className="text-slate-400">about:blank</code>.
       </p>
     </div>
   );
@@ -47,7 +47,7 @@ export function BrowserSection({
 function SectionField({ label, children }: { label: string; children: React.ReactNode }): JSX.Element {
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="text-[11px] font-medium text-slate-500">{label}</div>
+      <div className="text-[11px] font-medium text-slate-400">{label}</div>
       {children}
     </div>
   );

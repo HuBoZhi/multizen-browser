@@ -119,7 +119,7 @@ function BannerButton({
       style={
         primary
           ? { background: "linear-gradient(90deg, #6366f1, #a855f7)" }
-          : { boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)" }
+          : { boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.19)" }
       }
       {...rest}
     >

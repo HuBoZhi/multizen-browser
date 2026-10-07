@@ -140,7 +140,7 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
             className="inline-flex items-center gap-1.5 h-8 px-3 text-[12px] font-medium text-slate-300 hover:text-slate-100 transition-colors rounded-lg disabled:opacity-50"
             style={{
               background: "rgba(255,255,255,0.03)",
-              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
+              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)",
             }}
             title="Probe the proxy and align locale/timezone with its geo"
           >
@@ -202,10 +202,10 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
       {/* Computed-UA preview — read-only. This is the result of the
           choices above, not a user input. */}
       <div
-        className="px-2.5 py-2 rounded-lg text-[10px] mono text-slate-500 leading-relaxed truncate"
+        className="px-2.5 py-2 rounded-lg text-[10px] mono text-slate-400 leading-relaxed truncate"
         style={{
-          background: "rgba(255,255,255,0.035)",
-          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.10)",
+          background: "rgba(255,255,255,0.055)",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17)",
         }}
         title={fingerprint.userAgent}
       >
@@ -279,7 +279,7 @@ function Field({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
-        <div className="text-[11px] font-medium text-slate-500">{label}</div>
+        <div className="text-[11px] font-medium text-slate-400">{label}</div>
         {right && (
           <>
             <div className="flex-1" />
@@ -307,7 +307,7 @@ function Select({
       onChange={(e) => onChange(e.target.value)}
       className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 outline-none cursor-pointer focus:bg-white/[0.05] transition-colors"
       style={{
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)",
         fontFamily: "var(--font-mono)",
         fontWeight: 500,
         appearance: "none",

@@ -33,7 +33,7 @@ export function ExtensionsSection({
       return <StagingExtensions staged={staged ?? []} onChange={onStagedChange} />;
     }
     return (
-      <div className="text-[12px] text-slate-500 leading-relaxed">
+      <div className="text-[12px] text-slate-400 leading-relaxed">
         Save the profile first — then you can add extensions (.crx / .zip / folder, or by
         Chrome Web Store link) and they&apos;ll load in this profile only.
       </div>
@@ -280,12 +280,12 @@ function StagingExtensions({
                 className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors hover:bg-white/[0.05]"
                 style={{
                   background: "rgba(255,255,255,0.03)",
-                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
+                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.19)",
                 }}
               >
                 <ExtIcon id={ext.id} ext={ext} profileId={null} />
                 <span className="flex-1 text-[12px] text-slate-200 truncate">{ext.name}</span>
-                <Plus size={13} className="text-slate-500 shrink-0" />
+                <Plus size={13} className="text-slate-400 shrink-0" />
               </button>
             ))
           )}
@@ -320,7 +320,7 @@ function ExtRow({
       className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
       style={{
         background: "rgba(255,255,255,0.03)",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.19)",
       }}
     >
       <ExtIcon id={ext.id} ext={ext} profileId={profileId} />
@@ -338,7 +338,7 @@ function ExtRow({
         type="button"
         aria-label="Remove"
         onClick={onRemove}
-        className="text-slate-500 hover:text-red-400 transition-colors"
+        className="text-slate-400 hover:text-red-400 transition-colors"
       >
         <Trash2 size={13} />
       </button>
@@ -369,7 +369,7 @@ function AddRow({
           onChange={(e) => onUrl(e.target.value)}
           placeholder="Chrome Web Store URL or extension ID"
           className="flex-1 px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 placeholder:text-slate-400 outline-none focus:bg-white/[0.05] transition-colors"
-          style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
+          style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)" }}
         />
         <button
           type="button"

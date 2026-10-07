@@ -275,7 +275,7 @@ export function ProfileEditSheet({ profile, onSaved }: Props): JSX.Element {
                       value={form.proxyType}
                       onChange={(e) => update("proxyType", e.target.value as "http" | "socks5")}
                       className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 outline-none"
-                      style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
+                      style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)" }}
                     >
                       <option value="http">HTTP</option>
                       <option value="socks5">SOCKS5</option>
@@ -351,7 +351,7 @@ export function ProfileEditSheet({ profile, onSaved }: Props): JSX.Element {
 function StatusPill({ status }: { status: SaveStatus }): JSX.Element {
   if (status.kind === "saving") {
     return (
-      <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+      <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
         <Loader2 size={11} className="animate-spin" /> Saving…
       </div>
     );
@@ -365,7 +365,7 @@ function StatusPill({ status }: { status: SaveStatus }): JSX.Element {
     );
   }
   return (
-    <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+    <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
       <Check size={11} className="text-emerald-400/80" /> All changes saved
     </div>
   );

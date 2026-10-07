@@ -48,9 +48,9 @@ export function ExtensionCatalog({
   return (
     <div className="space-y-2.5">
       <div className="flex items-center gap-2 px-2.5 h-9 rounded-lg bg-white/[0.03]"
-        style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
+        style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)" }}
       >
-        <Search size={13} className="text-slate-500 shrink-0" />
+        <Search size={13} className="text-slate-400 shrink-0" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -65,7 +65,7 @@ export function ExtensionCatalog({
         <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
           {groups.map(({ cat, items }) => (
             <div key={cat.id} className="space-y-1.5">
-              <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+              <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">
                 {cat.label}
               </div>
               {items.map((ext) => {
@@ -77,13 +77,13 @@ export function ExtensionCatalog({
                     className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
                     style={{
                       background: "rgba(255,255,255,0.03)",
-                      boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
+                      boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.19)",
                     }}
                   >
                     <ExtIcon id={ext.id} />
                     <div className="flex-1 min-w-0">
                       <div className="text-[12px] text-slate-200 truncate">{ext.name}</div>
-                      <div className="text-[11px] text-slate-500 truncate">{ext.description}</div>
+                      <div className="text-[11px] text-slate-400 truncate">{ext.description}</div>
                     </div>
                     <button
                       type="button"

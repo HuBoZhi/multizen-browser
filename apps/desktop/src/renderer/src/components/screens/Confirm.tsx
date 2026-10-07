@@ -37,7 +37,7 @@ export function Confirm(props: ConfirmProps): JSX.Element | null {
           width: 420,
           borderRadius: 16,
           background: "rgba(15,16,22,0.92)",
-          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.10), 0 30px 80px rgba(0,0,0,0.6)",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17), 0 30px 80px rgba(0,0,0,0.6)",
           padding: 22,
           animation: "mz-slide-up 140ms cubic-bezier(0.2,0.8,0.2,1)",
         }}
@@ -120,7 +120,7 @@ export function Prompt(props: PromptProps): JSX.Element | null {
           width: 460,
           borderRadius: 16,
           background: "rgba(15,16,22,0.92)",
-          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.10), 0 30px 80px rgba(0,0,0,0.6)",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17), 0 30px 80px rgba(0,0,0,0.6)",
           padding: 22,
           animation: "mz-slide-up 140ms cubic-bezier(0.2,0.8,0.2,1)",
         }}
@@ -129,7 +129,7 @@ export function Prompt(props: PromptProps): JSX.Element | null {
         {props.description && (
           <div className="text-[12.5px] text-slate-400 mt-2 leading-relaxed">{props.description}</div>
         )}
-        {props.label && <div className="text-[11px] font-medium text-slate-500 mt-4 mb-1.5">{props.label}</div>}
+        {props.label && <div className="text-[11px] font-medium text-slate-400 mt-4 mb-1.5">{props.label}</div>}
         <input
           autoFocus
           type={props.inputType ?? "text"}
@@ -142,8 +142,8 @@ export function Prompt(props: PromptProps): JSX.Element | null {
           }}
           className="w-full mono text-[13px] text-slate-100 px-3 py-2.5 rounded-[10px] outline-none"
           style={{
-            background: "rgba(255,255,255,0.04)",
-            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
+            background: "rgba(255,255,255,0.06)",
+            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)",
             border: 0,
             marginTop: props.label ? 0 : 16,
           }}

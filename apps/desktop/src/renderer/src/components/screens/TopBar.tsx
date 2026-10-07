@@ -26,7 +26,7 @@ export function TopBar({ totalCount, runningCount, mcpUrl, onCmdK, onSettings }:
       style={{
         height: 44,
         padding: IS_WINDOWS ? "0 152px 0 14px" : "0 14px",
-        background: "rgba(10,11,15,0.7)",
+        background: "rgba(16,18,24,0.7)",
         backdropFilter: "blur(20px)",
         borderBottom: "1px solid rgba(255,255,255,0.05)",
       }}
@@ -52,11 +52,11 @@ export function TopBar({ totalCount, runningCount, mcpUrl, onCmdK, onSettings }:
           padding: "6px 12px",
           borderRadius: 10,
           background: "rgba(255,255,255,0.03)",
-          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.19)",
         }}
       >
-        <Search size={14} className="text-slate-500" />
-        <span className="flex-1 text-left text-[13px] text-slate-500">
+        <Search size={14} className="text-slate-400" />
+        <span className="flex-1 text-left text-[13px] text-slate-400">
           Search profiles, tags, urls…
         </span>
         <Kbd>⌘ K</Kbd>
@@ -64,7 +64,7 @@ export function TopBar({ totalCount, runningCount, mcpUrl, onCmdK, onSettings }:
 
       {/* Right cluster */}
       <div className="no-drag flex items-center gap-3">
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+        <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
           <span className="mono text-slate-300 text-[12px]">{runningCount}</span>
           <span>running</span>
           <span className="text-slate-400">·</span>

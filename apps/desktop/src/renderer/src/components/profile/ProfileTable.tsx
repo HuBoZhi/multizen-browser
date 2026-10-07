@@ -54,8 +54,8 @@ export function ProfileTable({
     <div
       className="rounded-xl overflow-hidden"
       style={{
-        background: "rgba(255,255,255,0.035)",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.10)",
+        background: "rgba(255,255,255,0.055)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17)",
       }}
     >
       {/* Header */}
@@ -64,7 +64,7 @@ export function ProfileTable({
         className="grid items-center gap-3 px-4 py-2 sticky top-0 z-10"
         style={{
           gridTemplateColumns: PROFILE_TABLE_GRID_TEMPLATE,
-          background: "rgba(10,11,15,0.92)",
+          background: "rgba(16,18,24,0.92)",
           backdropFilter: "blur(12px)",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
         }}

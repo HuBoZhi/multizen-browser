@@ -15,9 +15,9 @@ export function ProfilesEmptyState({ onCreate }: Props): JSX.Element {
           maxWidth: 420,
           padding: 32,
           borderRadius: 18,
-          background: "rgba(255,255,255,0.035)",
+          background: "rgba(255,255,255,0.055)",
           boxShadow:
-            "inset 0 0 0 1px rgba(255,255,255,0.10), 0 24px 48px -16px rgba(0,0,0,0.5)",
+            "inset 0 0 0 1px rgba(255,255,255,0.17), 0 24px 48px -16px rgba(0,0,0,0.5)",
         }}
       >
         <div
@@ -34,7 +34,7 @@ export function ProfilesEmptyState({ onCreate }: Props): JSX.Element {
           <Boxes size={22} strokeWidth={1.5} />
         </div>
         <div className="text-[14px] font-semibold text-slate-100 mt-3.5">No profiles yet</div>
-        <div className="text-[12px] text-slate-500 mt-1.5 leading-relaxed">
+        <div className="text-[12px] text-slate-400 mt-1.5 leading-relaxed">
           Each profile is its own browser — cookies, login, fingerprint, proxy. Create one to get started.
         </div>
         <div className="flex items-center justify-center gap-2 mt-4">

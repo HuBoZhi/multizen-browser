@@ -1,4 +1,9 @@
 const { app, BrowserWindow } = require("electron");
+// Booted as a bare script there is no package.json, so Electron would resolve
+// userData to %APPDATA%\Electron — a FRESH profile (empty engine cache,
+// onboarding) that does not reflect the real app. Pin it to the real one.
+app.setName("MultiZen");
+app.setPath("userData", require("node:path").join(app.getPath("appData"), "MultiZen"));
 app.whenReady().then(() => {
   const poll = setInterval(() => {
     const win = BrowserWindow.getAllWindows()[0];

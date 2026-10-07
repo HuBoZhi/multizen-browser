@@ -151,13 +151,13 @@ function createWindow(): void {
         ? {
             titleBarStyle: "hidden" as const,
             titleBarOverlay: {
-              color: "#0a0b0f",
+              color: "#101218",
               symbolColor: "#94a3b8",
               height: 44,
             },
           }
         : {}),
-    backgroundColor: "#0a0b0f",
+    backgroundColor: "#101218",
     icon: iconPath ?? undefined,
     webPreferences: {
       preload: join(__dirname, "../preload/index.mjs"),

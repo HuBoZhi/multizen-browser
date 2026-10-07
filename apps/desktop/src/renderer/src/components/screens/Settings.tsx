@@ -93,7 +93,7 @@ export function Settings({ onImport }: Props): JSX.Element {
   if (!settings) {
     return (
       <div className="flex-1 overflow-auto p-8">
-        <div className="max-w-[720px] mx-auto text-[13px] text-slate-500">Loading…</div>
+        <div className="max-w-[720px] mx-auto text-[13px] text-slate-400">Loading…</div>
       </div>
     );
   }
@@ -102,7 +102,7 @@ export function Settings({ onImport }: Props): JSX.Element {
     <div className="flex-1 overflow-auto" style={{ padding: "24px 32px" }}>
       <div className="max-w-[720px] mx-auto">
         <div className="text-lg font-bold tracking-tight text-slate-100 mb-1.5">Settings</div>
-        <div className="text-[13px] text-slate-500 mb-5">
+        <div className="text-[13px] text-slate-400 mb-5">
           MCP server, archives, build info. Configuration is local — MultiZen does not call any
           external API on your behalf.
         </div>
@@ -124,7 +124,7 @@ export function Settings({ onImport }: Props): JSX.Element {
                   padding: "8px 12px",
                   borderRadius: 10,
                   background: "rgba(255,255,255,0.03)",
-                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
+                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.19)",
                 }}
               >
                 <span className="flex-1 mono text-[12px] text-slate-300 truncate">
@@ -144,7 +144,7 @@ export function Settings({ onImport }: Props): JSX.Element {
 
           {info?.mcpAuthToken && (
             <div className="mt-2">
-              <div className="text-[11px] text-slate-500 mb-1">
+              <div className="text-[11px] text-slate-400 mb-1">
                 Auth token — required. Send as{" "}
                 <span className="mono text-slate-400">Authorization: Bearer &lt;token&gt;</span>. Keep
                 it secret.
@@ -155,7 +155,7 @@ export function Settings({ onImport }: Props): JSX.Element {
                   padding: "8px 12px",
                   borderRadius: 10,
                   background: "rgba(255,255,255,0.03)",
-                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
+                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.19)",
                 }}
               >
                 <span className="flex-1 mono text-[12px] text-slate-300 truncate">
@@ -217,7 +217,7 @@ export function Settings({ onImport }: Props): JSX.Element {
                     <span className="text-[13px] font-medium text-slate-100">{option.label}</span>
                     {selected && <Pill kind="running">active</Pill>}
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  <div className="text-[11px] text-slate-400 mt-1 leading-relaxed">
                     {option.description}
                   </div>
                 </button>
@@ -347,7 +347,7 @@ export function Settings({ onImport }: Props): JSX.Element {
             single-use token — <b>no</b> account, <b>no</b> persistent ID, and your IP is
             never stored (a coarse country is derived server-side then discarded). No
             profiles, proxies, or browsing are ever included. Set{" "}
-            <code className="text-slate-500">MULTIZEN_NO_TELEMETRY=1</code> to force it off.
+            <code className="text-slate-400">MULTIZEN_NO_TELEMETRY=1</code> to force it off.
           </div>
         </Row>
 
@@ -462,7 +462,7 @@ function Row({
       <div className="flex-1">
         <div className="text-[13px] font-semibold text-slate-100">{title}</div>
         {desc && (
-          <div className="text-[12px] text-slate-500 mt-1 leading-relaxed max-w-[480px]">
+          <div className="text-[12px] text-slate-400 mt-1 leading-relaxed max-w-[480px]">
             {desc}
           </div>
         )}

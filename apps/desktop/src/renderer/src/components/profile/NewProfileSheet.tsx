@@ -210,7 +210,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
                   rows={3}
                   className="w-full px-2.5 py-2 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 placeholder:text-slate-400 outline-none focus:bg-white/[0.05] transition-colors resize-none"
                   style={{
-                    boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
+                    boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)",
                     fontFamily: "var(--font-sans)",
                   }}
                 />
@@ -243,7 +243,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
                           setProxy((p) => ({ ...p, type: e.target.value as "http" | "socks5" }))
                         }
                         className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 outline-none"
-                        style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
+                        style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)" }}
                       >
                         <option value="http">HTTP</option>
                         <option value="socks5">SOCKS5</option>

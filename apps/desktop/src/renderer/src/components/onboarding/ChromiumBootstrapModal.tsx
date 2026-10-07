@@ -34,7 +34,7 @@ export function ChromiumBootstrapModal(): JSX.Element | null {
         className="rounded-2xl p-6 w-full max-w-md mx-6"
         style={{
           background: "rgba(15,16,22,0.95)",
-          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.10), 0 30px 80px rgba(0,0,0,0.6)",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17), 0 30px 80px rgba(0,0,0,0.6)",
         }}
       >
         <div className="flex items-center gap-3 mb-4">
@@ -136,7 +136,7 @@ function Body({ status }: { status: ChromiumStatus }): JSX.Element {
             }}
           />
         </div>
-        <div className="flex items-center justify-between text-[11px] mono text-slate-500">
+        <div className="flex items-center justify-between text-[11px] mono text-slate-400">
           <span>
             {formatMB(status.bytesReceived)} / {formatMB(status.bytesTotal)}
           </span>

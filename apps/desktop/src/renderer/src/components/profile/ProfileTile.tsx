@@ -156,7 +156,7 @@ export function ProfileTile({
       className="flex flex-col gap-2.5 p-3.5 relative transition-all h-full"
       style={{
         borderRadius: 18,
-        background: "rgba(255,255,255,0.04)",
+        background: "rgba(255,255,255,0.06)",
         boxShadow: `inset 0 0 0 1px ${RING_BY_STATE[profile.state]}, 0 24px 48px -16px rgba(0,0,0,0.5), ${GLOW_BY_STATE[profile.state]}`,
         backdropFilter: "blur(20px)",
         transitionTimingFunction: "cubic-bezier(0.2,0.8,0.2,1)",
@@ -177,7 +177,7 @@ export function ProfileTile({
               style={{
                 background: "#12141a",
                 color: "#8b93a3",
-                boxShadow: "0 0 0 2px #0b0c10, inset 0 0 0 1px rgba(255,255,255,0.08)",
+                boxShadow: "0 0 0 2px #0b0c10, inset 0 0 0 1px rgba(255,255,255,0.15)",
               }}
             >
               <Pencil size={8} strokeWidth={2} />
@@ -203,8 +203,8 @@ export function ProfileTile({
               key={t}
               className="mz-pill mono text-slate-400"
               style={{
-                background: "rgba(255,255,255,0.04)",
-                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.10)",
+                background: "rgba(255,255,255,0.06)",
+                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17)",
               }}
             >
               {t}
@@ -227,12 +227,12 @@ export function ProfileTile({
         <PlatformIcon
           platform={platformFromDeviceFamily(profile.device)}
           size={12}
-          className="text-slate-500"
+          className="text-slate-400"
         />
-        <span className="text-slate-500">
+        <span className="text-slate-400">
           {platformLabel(platformFromDeviceFamily(profile.device))}
         </span>
-        <span className="text-slate-500">·</span>
+        <span className="text-slate-400">·</span>
         <span className="truncate">
           {profile.lastOpenedAt ? relativeTime(profile.lastOpenedAt) : "never opened"}
         </span>
@@ -275,7 +275,7 @@ export function ProfileTile({
                   onClick={(e) => handleScreenshotRun(e, r)}
                   title="Screenshot this instance's page (in-browser capture, never the desktop)"
                   aria-label="Screenshot this instance"
-                  className="no-drag w-5 h-5 rounded-md flex items-center justify-center text-slate-500 hover:text-slate-200 hover:bg-white/10 transition-colors cursor-pointer border-0 bg-transparent flex-shrink-0"
+                  className="no-drag w-5 h-5 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-white/10 transition-colors cursor-pointer border-0 bg-transparent flex-shrink-0"
                 >
                   <Camera size={11} />
                 </button>
@@ -284,7 +284,7 @@ export function ProfileTile({
                   onClick={(e) => handleCloseRun(e, r.runId)}
                   title="Close this instance (other instances stay up)"
                   aria-label="Close this instance"
-                  className="no-drag w-5 h-5 rounded-md flex items-center justify-center text-slate-500 hover:text-red-300 hover:bg-red-400/10 transition-colors cursor-pointer border-0 bg-transparent flex-shrink-0"
+                  className="no-drag w-5 h-5 rounded-md flex items-center justify-center text-slate-400 hover:text-red-300 hover:bg-red-400/10 transition-colors cursor-pointer border-0 bg-transparent flex-shrink-0"
                 >
                   <X size={11} />
                 </button>
@@ -307,7 +307,6 @@ export function ProfileTile({
             <Button
               variant="accent"
               size="md"
-              fullWidth
               disabled={pending}
               onClick={handleLaunch}
               leftIcon={<Play size={11} fill="currentColor" strokeWidth={0} />}
@@ -338,8 +337,8 @@ export function ProfileTile({
               </Button>
             </>
           )}
+          <ActionMenu onEdit={onOpen} onExport={onExport} onDuplicate={onDuplicate} onDelete={onDelete} />
         </div>
-        <ActionMenu onEdit={onOpen} onExport={onExport} onDuplicate={onDuplicate} onDelete={onDelete} />
       </div>
     </div>
   );
@@ -357,7 +356,7 @@ function ProxyHealthRow({ profile }: { profile: TileData }): JSX.Element {
     return (
       <div
         className="flex items-center gap-2 px-2.5 py-2 rounded-[11px]"
-        style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)" }}
+        style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.19)" }}
       >
         <span className="text-[12px] font-semibold text-slate-400 truncate">Direct — no proxy</span>
         <span className="ml-auto mono text-[10px] text-slate-400">host DNS</span>
@@ -391,7 +390,7 @@ function ProxyHealthRow({ profile }: { profile: TileData }): JSX.Element {
       style={
         isError
           ? { background: "rgba(239,68,68,0.06)", boxShadow: "inset 0 0 0 1px rgba(239,68,68,0.22)" }
-          : { background: "rgba(255,255,255,0.028)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }
+          : { background: "rgba(255,255,255,0.028)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)" }
       }
     >
       <span
@@ -543,7 +542,7 @@ function ActionMenu({
                 right: coords.right,
                 background: "rgba(15,16,22,0.98)",
                 boxShadow:
-                  "inset 0 0 0 1px rgba(255,255,255,0.08), 0 20px 40px rgba(0,0,0,0.6)",
+                  "inset 0 0 0 1px rgba(255,255,255,0.15), 0 20px 40px rgba(0,0,0,0.6)",
                 backdropFilter: "blur(20px)",
               }}
             >

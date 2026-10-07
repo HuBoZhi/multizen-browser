@@ -108,15 +108,15 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
                 Drive them yourself or via any MCP agent.
               </div>
             </div>
-            <div className="flex items-center gap-3 mt-1.5 mono text-[11px] text-slate-500">
+            <div className="flex items-center gap-3 mt-1.5 mono text-[11px] text-slate-400">
               <span>macOS</span>
-              <span className="text-slate-500">·</span>
+              <span className="text-slate-400">·</span>
               <span>Windows</span>
-              <span className="text-slate-500">·</span>
+              <span className="text-slate-400">·</span>
               <span>Linux</span>
-              <span className="text-slate-500">·</span>
+              <span className="text-slate-400">·</span>
               <span>Chromium</span>
-              <span className="text-slate-500">·</span>
+              <span className="text-slate-400">·</span>
               <span>MCP HTTP</span>
             </div>
             <button
@@ -192,7 +192,7 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
                 }}
                 placeholder={DEFAULT_NAME}
                 className="w-full px-4 py-3 rounded-xl bg-white/[0.03] text-[14px] text-slate-100 placeholder:text-slate-400 outline-none focus:bg-white/[0.05] transition-colors mono"
-                style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
+                style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)" }}
               />
             </div>
             <button

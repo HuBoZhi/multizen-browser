@@ -43,7 +43,7 @@ export function McpPanel({ events, profiles, runs, mcpUrl, mcpToken, instanceId 
             </span>
           )}
         </div>
-        <div className="text-[13px] text-slate-500 mb-5 leading-relaxed max-w-[68ch]">
+        <div className="text-[13px] text-slate-400 mb-5 leading-relaxed max-w-[68ch]">
           Drive your profiles from an AI agent. Point any MCP client (Claude Desktop, Cursor,
           Cline, …) at MultiZen, then launch a profile and let the agent open tabs, click, type,
           and read pages through it — every tool call streams into the feed below.
@@ -65,12 +65,12 @@ export function McpPanel({ events, profiles, runs, mcpUrl, mcpToken, instanceId 
             style={{
               padding: 40,
               borderRadius: 18,
-              background: "rgba(255,255,255,0.035)",
-              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.10)",
+              background: "rgba(255,255,255,0.055)",
+              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17)",
             }}
           >
             <div className="text-[13px] font-semibold text-slate-100">No agent calls yet</div>
-            <div className="text-[12px] text-slate-500 mt-1.5 leading-relaxed max-w-[46ch] mx-auto">
+            <div className="text-[12px] text-slate-400 mt-1.5 leading-relaxed max-w-[46ch] mx-auto">
               Connect a client above, launch a profile, and every MCP tool call the agent makes
               shows up here — with sanitized arguments, outcome, and duration.
             </div>
@@ -170,8 +170,8 @@ function ConnectCard({
     <div
       style={{
         borderRadius: 18,
-        background: "rgba(255,255,255,0.04)",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12), 0 24px 48px -24px rgba(0,0,0,0.5)",
+        background: "rgba(255,255,255,0.06)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.19), 0 24px 48px -24px rgba(0,0,0,0.5)",
         padding: 18,
       }}
     >
@@ -210,21 +210,21 @@ function ConnectCard({
       ) : (
         <>
           {/* Endpoint — Streamable HTTP is the current transport */}
-          <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-500 mb-1.5">
+          <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1.5">
             Endpoint (Streamable HTTP)
           </div>
           <CopyRow value={httpUrl} mono />
-          <div className="mt-1.5 text-[11px] text-slate-500 leading-relaxed">
+          <div className="mt-1.5 text-[11px] text-slate-400 leading-relaxed">
             Legacy HTTP+SSE endpoint (older clients):{" "}
             <code className="mono text-slate-400">{sseUrl}</code>
           </div>
 
           {/* Auth token — every request needs it; each config below embeds it. */}
-          <div className="mt-3 text-[10px] uppercase tracking-wider font-semibold text-slate-500 mb-1.5">
+          <div className="mt-3 text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1.5">
             Auth token
           </div>
           <CopyRow value={bearer} mono />
-          <div className="mt-1.5 text-[11px] text-slate-500 leading-relaxed">
+          <div className="mt-1.5 text-[11px] text-slate-400 leading-relaxed">
             Sent as <code className="mono text-slate-400">Authorization: Bearer …</code> — the
             configs below already include it. Keep it secret; anyone with it can drive your
             profiles.
@@ -240,11 +240,11 @@ function ConnectCard({
           {/* Config snippets — three shapes by client type */}
           <div className="mt-4 space-y-3">
             <div>
-              <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-500 mb-1.5">
+              <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1.5">
                 Codex CLI — ~/.codex/config.toml
               </div>
               <CopyRow value={codexConfig} mono block />
-              <div className="flex items-start gap-1.5 mt-2 text-[11px] text-slate-500 leading-relaxed">
+              <div className="flex items-start gap-1.5 mt-2 text-[11px] text-slate-400 leading-relaxed">
                 <Terminal size={12} className="mt-[2px] flex-shrink-0 text-slate-400" />
                 <span>
                   The <code className="text-slate-400">url</code> field needs a Codex build with
@@ -254,17 +254,17 @@ function ConnectCard({
               </div>
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-500 mb-1.5">
+              <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1.5">
                 JSON URL clients — Cursor, Cline, Continue
               </div>
               <CopyRow value={jsonConfig} mono block />
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-500 mb-1.5">
+              <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1.5">
                 Stdio clients — Claude Desktop
               </div>
               <CopyRow value={stdioConfig} mono block />
-              <div className="flex items-start gap-1.5 mt-2 text-[11px] text-slate-500 leading-relaxed">
+              <div className="flex items-start gap-1.5 mt-2 text-[11px] text-slate-400 leading-relaxed">
                 <Terminal size={12} className="mt-[2px] flex-shrink-0 text-slate-400" />
                 <span>
                   Claude Desktop&apos;s config has no <code className="text-slate-400">url</code>{" "}
@@ -292,7 +292,7 @@ function Step({ n, children }: { n: number; children: React.ReactNode }): JSX.El
           borderRadius: 6,
           marginTop: 1,
           background: "rgba(255,255,255,0.05)",
-          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)",
           color: "#94a3b8",
         }}
       >
@@ -330,7 +330,7 @@ function CopyRow({
       style={{
         borderRadius: 10,
         background: "rgba(0,0,0,0.25)",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.19)",
         padding: block ? "10px 10px 10px 12px" : "9px 9px 9px 12px",
       }}
     >
@@ -361,7 +361,7 @@ function CopyRow({
           background: copied ? "rgba(16,185,129,0.14)" : "rgba(255,255,255,0.04)",
           boxShadow: copied
             ? "inset 0 0 0 1px rgba(16,185,129,0.3)"
-            : "inset 0 0 0 1px rgba(255,255,255,0.08)",
+            : "inset 0 0 0 1px rgba(255,255,255,0.15)",
           color: copied ? "#6ee7b7" : "#94a3b8",
         }}
       >
@@ -442,7 +442,7 @@ function PageRow({
             <span className="text-purple-400">multizen.</span>
             {event.tool}
           </code>
-          <span className="ml-auto mono text-[10px] text-slate-500">
+          <span className="ml-auto mono text-[10px] text-slate-400">
             {formatTime(event.timestamp)}
             {event.durationMs !== undefined && ` · ${event.durationMs}ms`}
           </span>
@@ -451,7 +451,7 @@ function PageRow({
           <div className="text-[12px] text-slate-400 mt-0.5 truncate">{event.summary}</div>
         )}
         {profile && (
-          <div className="mono text-[10px] text-slate-500 mt-1 flex items-center gap-1.5">
+          <div className="mono text-[10px] text-slate-400 mt-1 flex items-center gap-1.5">
             <Flag cc={cc} />
             {profile.name} · {profile.id.slice(0, 12)}
           </div>
@@ -478,8 +478,8 @@ function RunsCard({ runs }: { runs: RunInfo[] }): JSX.Element {
       className="mt-4"
       style={{
         borderRadius: 18,
-        background: "rgba(255,255,255,0.035)",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
+        background: "rgba(255,255,255,0.055)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.19)",
         padding: 18,
       }}
     >
@@ -501,12 +501,12 @@ function RunsCard({ runs }: { runs: RunInfo[] }): JSX.Element {
           <div className="text-[13px] font-semibold text-slate-100">
             Running browser instances
           </div>
-          <div className="text-[11px] text-slate-500">
+          <div className="text-[11px] text-slate-400">
             Each instance has its own MCP endpoint — point an agent at one to drive exactly that
             browser.
           </div>
         </div>
-        <span className="mono text-[10px] text-slate-500 ml-auto">{runs.length} live</span>
+        <span className="mono text-[10px] text-slate-400 ml-auto">{runs.length} live</span>
       </div>
       <div className="space-y-3">
         {runs.map((r) => (
@@ -515,7 +515,7 @@ function RunsCard({ runs }: { runs: RunInfo[] }): JSX.Element {
             style={{
               borderRadius: 12,
               background: "rgba(0,0,0,0.2)",
-              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.10)",
+              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17)",
               padding: 12,
             }}
           >

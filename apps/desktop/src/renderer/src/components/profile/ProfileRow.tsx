@@ -135,12 +135,12 @@ export function ProfileRow({
             <PlatformIcon
               platform={platformFromDeviceFamily(profile.device)}
               size={11}
-              className="text-slate-500 flex-shrink-0"
+              className="text-slate-400 flex-shrink-0"
             />
-            <span className="text-slate-500 flex-shrink-0">
+            <span className="text-slate-400 flex-shrink-0">
               {platformLabel(platformFromDeviceFamily(profile.device))}
             </span>
-            <span className="text-slate-500 flex-shrink-0">·</span>
+            <span className="text-slate-400 flex-shrink-0">·</span>
             <span className="truncate">{profile.id.slice(0, 12)}</span>
           </div>
         </div>
@@ -158,8 +158,8 @@ export function ProfileRow({
             key={t}
             className="mz-pill mono text-slate-400 truncate"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.10)",
+              background: "rgba(255,255,255,0.06)",
+              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17)",
               maxWidth: 90,
             }}
           >
@@ -174,7 +174,7 @@ export function ProfileRow({
       </div>
 
       {/* Last opened */}
-      <div className="mono text-[11px] text-slate-500 truncate">
+      <div className="mono text-[11px] text-slate-400 truncate">
         {profile.lastOpenedAt ? relativeTime(profile.lastOpenedAt) : "never"}
       </div>
 
@@ -316,7 +316,7 @@ function RowProxyHealth({ profile }: { profile: TileData }): JSX.Element {
       >
         <Flag cc={cc} />
       </span>
-      <span className={cn("truncate", isError ? "text-red-300" : "text-slate-500")}>{label}</span>
+      <span className={cn("truncate", isError ? "text-red-300" : "text-slate-400")}>{label}</span>
       {health.status === "ok" && (
         <span
           className="w-[6px] h-[6px] rounded-full bg-emerald-500 flex-shrink-0"
@@ -394,7 +394,7 @@ function RowMenu({
                 right: coords.right,
                 background: "rgba(15,16,22,0.98)",
                 boxShadow:
-                  "inset 0 0 0 1px rgba(255,255,255,0.08), 0 20px 40px rgba(0,0,0,0.6)",
+                  "inset 0 0 0 1px rgba(255,255,255,0.15), 0 20px 40px rgba(0,0,0,0.6)",
                 backdropFilter: "blur(20px)",
               }}
             >

@@ -29,7 +29,7 @@ export function LeftRail({ active, onChange, onCmdK }: Props): JSX.Element {
       className="flex flex-col items-center pt-3.5 gap-1.5 flex-shrink-0"
       style={{
         width: 56,
-        background: "rgba(255,255,255,0.01)",
+        background: "rgba(255,255,255,0.032)",
         borderRight: "1px solid rgba(255,255,255,0.04)",
       }}
     >
@@ -44,7 +44,7 @@ export function LeftRail({ active, onChange, onCmdK }: Props): JSX.Element {
             onClick={() => onChange(it.id)}
             className={cn(
               "w-9 h-9 rounded-[10px] flex items-center justify-center transition-colors",
-              isActive ? "text-purple-300" : "text-slate-500 hover:text-slate-200 hover:bg-white/5",
+              isActive ? "text-purple-300" : "text-slate-400 hover:text-slate-200 hover:bg-white/5",
             )}
             style={{
               background: isActive ? "rgba(168,85,247,0.12)" : undefined,

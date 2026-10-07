@@ -524,7 +524,7 @@ export function App(): JSX.Element {
         }
       >
         {shot && (
-          <div className="overflow-auto rounded-xl" style={{ maxHeight: "58vh", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.1)" }}>
+          <div className="overflow-auto rounded-xl" style={{ maxHeight: "58vh", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.17)" }}>
             <img src={`data:image/png;base64,${shot.pngBase64}`} alt="Browser page screenshot" className="w-full block" />
           </div>
         )}
@@ -598,7 +598,7 @@ export function App(): JSX.Element {
           style={{
             bottom: 56,
             background: "rgba(15,16,22,0.92)",
-            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08), 0 20px 60px rgba(0,0,0,0.5)",
+            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15), 0 20px 60px rgba(0,0,0,0.5)",
             backdropFilter: "blur(20px)",
             animation: "mz-slide-up 200ms ease-out",
           }}
