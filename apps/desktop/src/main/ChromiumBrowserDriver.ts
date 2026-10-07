@@ -1,4 +1,4 @@
-import { app } from "electron";
+import { app, screen } from "electron";
 import { spawn, execFile, type ChildProcess } from "node:child_process";
 import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
@@ -296,6 +296,13 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
     // Chromium parses it as ["en-US", "en;q=0.9"] and then re-adds q's,
     // producing the malformed "en-US,en;q=0.9;q=0.9" we saw on browserscan.
     const acceptLangPlain = fp.languages.join(",");
+    // Clamp the spawn window to the physical display: a fingerprint screen
+    // larger than the monitor produced a window bigger than the screen (right
+    // / bottom clipped, unreachable controls). window.screen stays spoofed at
+    // the claimed size; a window LARGER than the display was its own anomaly.
+    const workArea = screen.getPrimaryDisplay().workArea;
+    const winW = Math.min(fp.screen.width, workArea.width);
+    const winH = Math.min(fp.screen.height, workArea.height);
     const args = [
       `--user-data-dir=${browserDataDir}`,
       `--remote-debugging-port=${port}`,
@@ -331,8 +338,8 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
       `--lang=${fp.locale}`,
       // Accept-Language: plain list, Chromium adds q-values.
       `--accept-lang=${acceptLangPlain}`,
-      // Initial window size
-      `--window-size=${fp.screen.width},${fp.screen.height}`,
+      // Initial window size — clamped to the display (see above)
+      `--window-size=${winW},${winH}`,
     ];
     if (engine === "cloakbrowser") {
       // CloakBrowser implements fingerprint patches in C++. Feed it

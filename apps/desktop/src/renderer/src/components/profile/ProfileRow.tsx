@@ -344,12 +344,18 @@ function RowMenu({
 }): JSX.Element {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const [coords, setCoords] = useState<{ top: number; right: number } | null>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
     if (!open || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    setCoords({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    // Left-anchored + clamped so the 176px menu can never fall off-screen
+    // (rows render at the window's left edge in list view).
+    const MENU_W = 176;
+    const MENU_H = 170;
+    const left = Math.min(Math.max(8, rect.left), window.innerWidth - MENU_W - 8);
+    const top = Math.min(rect.bottom + 4, Math.max(8, window.innerHeight - MENU_H - 8));
+    setCoords({ top, left });
     const close = (): void => setOpen(false);
     window.addEventListener("scroll", close, true);
     window.addEventListener("resize", close);
@@ -391,7 +397,7 @@ function RowMenu({
               onClick={(e) => e.stopPropagation()}
               style={{
                 top: coords.top,
-                right: coords.right,
+                left: coords.left,
                 background: "rgba(15,16,22,0.98)",
                 boxShadow:
                   "inset 0 0 0 1px rgba(255,255,255,0.15), 0 20px 40px rgba(0,0,0,0.6)",

@@ -494,15 +494,19 @@ function ActionMenu({
 }): JSX.Element {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const [coords, setCoords] = useState<{ top: number; right: number } | null>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
     if (!open || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    setCoords({
-      top: rect.bottom + 4,
-      right: window.innerWidth - rect.right,
-    });
+    // The menu is 176px wide; a trigger near the screen's left edge made
+    // right-anchored positioning push it off-screen. Anchor by LEFT edge and
+    // clamp both axes into the viewport.
+    const MENU_W = 176;
+    const MENU_H = 170; // 4 items + padding + separator, approx.
+    const left = Math.min(Math.max(8, rect.left), window.innerWidth - MENU_W - 8);
+    const top = Math.min(rect.bottom + 4, Math.max(8, window.innerHeight - MENU_H - 8));
+    setCoords({ top, left });
     function onScroll(): void {
       setOpen(false);
     }
@@ -539,7 +543,7 @@ function ActionMenu({
               className="fixed z-[61] w-44 py-1 rounded-md"
               style={{
                 top: coords.top,
-                right: coords.right,
+                left: coords.left,
                 background: "rgba(15,16,22,0.98)",
                 boxShadow:
                   "inset 0 0 0 1px rgba(255,255,255,0.15), 0 20px 40px rgba(0,0,0,0.6)",
