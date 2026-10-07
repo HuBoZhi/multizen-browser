@@ -16,6 +16,7 @@ import type {
   EngineUpdateStatus,
   ExtensionConfig,
   ProxyConfig,
+  RunInfo,
   UpdateStatus,
 } from "@multizen/types";
 
@@ -116,6 +117,10 @@ const api = {
       ipcRenderer.on("activity:event", listener);
       return () => ipcRenderer.off("activity:event", listener);
     },
+  },
+  runs: {
+    /** Every live browser instance with its own MCP endpoint + token. */
+    list: (): Promise<RunInfo[]> => ipcRenderer.invoke("runs:list"),
   },
   system: {
     info: (): Promise<SystemInfo> => ipcRenderer.invoke("system:info"),

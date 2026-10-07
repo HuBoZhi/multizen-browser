@@ -366,6 +366,12 @@ app.whenReady().then(async () => {
     extensionStoreRoot,
     // FR-6 T2: ephemeral profiles materialize per-launch working copies here.
     runsRoot: join(dataRoot, "runs"),
+    // Run-model: every running browser instance gets its OWN MCP control
+    // endpoint (probed port + own token) serving a run-scoped tool set.
+    // Built from the same profileManager/driver/activityLog as the
+    // management-plane server, so tool calls still land in the live feed.
+    createRunServer: (scope) =>
+      createMultizenMcpServer({ profileManager, browserDriver, activityLog, scope }).server,
     // The companion's "Add to MultiZen" button routes here (profile-scoped).
     // Confirm natively first: any script on the store page could trigger the
     // channel, so an explicit OS dialog makes a drive-by install impossible.
@@ -550,8 +556,15 @@ app.whenReady().then(async () => {
 
   // Profile IPC
   ipcMain.handle("profiles:list", () =>
-    profileManager.list().map((p) => ({ ...p, isRunning: browserDriver.isRunning(p.id) })),
+    profileManager.list().map((p) => ({
+      ...p,
+      isRunning: browserDriver.isRunning(p.id),
+      runCount: browserDriver.listRuns().filter((r) => r.profileId === p.id).length,
+    })),
   );
+  // Run-model IPC: every live browser instance + its own MCP connection info
+  // (the MCP panel renders these so the user can copy an endpoint per run).
+  ipcMain.handle("runs:list", () => browserDriver.listRuns());
   ipcMain.handle("profiles:get", (_e, id: string) => profileManager.get(id));
   ipcMain.handle("profiles:create", (_e, input: Parameters<ProfileManager["create"]>[0]) =>
     profileManager.create(input),

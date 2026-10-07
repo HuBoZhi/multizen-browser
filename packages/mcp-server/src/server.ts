@@ -15,6 +15,7 @@ import {
 import type {
   LaunchedProfile,
   ProfileId,
+  RunInfo,
   CreateProfileInput,
   UpdateProfileInput,
   FingerprintConfig,
@@ -189,20 +190,28 @@ function rawCdpEnabled(): boolean {
  */
 export interface BrowserDriver {
   launch(profileId: ProfileId): Promise<LaunchedProfile>;
+  /** Close EVERY running instance of the profile. */
   close(profileId: ProfileId): Promise<void>;
+  /** Close exactly one running instance (identified by its run id). */
+  closeRun(runId: string): Promise<void>;
+  /** True when the profile has at least one live running instance. */
   isRunning(profileId: ProfileId): boolean;
-  navigate(profileId: ProfileId, url: string): Promise<{ url: string }>;
-  click(profileId: ProfileId, selector: string): Promise<{ ok: true }>;
-  type(profileId: ProfileId, selector: string, text: string): Promise<{ ok: true }>;
-  extract(profileId: ProfileId): Promise<{ result: unknown }>;
-  screenshot(profileId: ProfileId): Promise<{ pngBase64: string }>;
+  /** All live running instances with their per-run MCP connection info. */
+  listRuns(): RunInfo[];
+  // Every operation below targets ONE running instance (run id = the value
+  // returned by launch().runId / listRuns()[i].runId).
+  navigate(runId: string, url: string): Promise<{ url: string }>;
+  click(runId: string, selector: string): Promise<{ ok: true }>;
+  type(runId: string, selector: string, text: string): Promise<{ ok: true }>;
+  extract(runId: string): Promise<{ result: unknown }>;
+  screenshot(runId: string): Promise<{ pngBase64: string }>;
   /**
    * Send a raw CDP command. `opts.safe` (default true) auto-disables any
    * domain the call had to enable so the stealth baseline is preserved; the
    * convenience CDP tools compose on top of this single primitive.
    */
   cdpSend(
-    profileId: ProfileId,
+    runId: string,
     method: string,
     params?: Record<string, unknown>,
     sessionId?: string,
@@ -215,12 +224,28 @@ export interface MultizenMcpServerOptions {
   browserDriver: BrowserDriver;
   /** Optional activity log; if not provided, a fresh one is created */
   activityLog?: ActivityLog;
+  /**
+   * Scope this server to ONE running instance (a per-run control endpoint):
+   * management tools (create/update/delete profile, list_fingerprint_options,
+   * list_runs, close_run, launch_profile) are removed, browser-op tools lose
+   * their profile_id freedom and always target this run, and close_profile
+   * stops exactly this run. Used by the driver for per-run MCP endpoints.
+   */
+  scope?: { profileId: ProfileId; runId: string; label: string };
 }
 
 export interface MultizenMcpServer {
   server: Server;
   activityLog: ActivityLog;
 }
+
+/** Factory producing a run-scoped MCP `Server` — how the desktop app hands the
+ *  driver a per-run server builder without importing the SDK's class types. */
+export type RunServerFactory = (scope: {
+  profileId: ProfileId;
+  runId: string;
+  label: string;
+}) => Server;
 
 const ProfileIdSchema = z.object({ profile_id: z.string().min(1) });
 const NavigateSchema = ProfileIdSchema.extend({ url: z.string().url() });
@@ -372,8 +397,20 @@ const MULTIZEN_MCP_INSTRUCTIONS = [
   "- Do not create or launch profiles in bulk to farm accounts; this tool supports autonomous execution of authorized workflows.",
 ].join("\n");
 
+/** Tools that manage the profile LIBRARY — removed from run-scoped servers,
+ *  whose surface is exactly "drive this one browser". */
+const MANAGEMENT_ONLY_TOOLS = new Set([
+  "create_profile",
+  "update_profile",
+  "delete_profile",
+  "list_fingerprint_options",
+  "launch_profile",
+  "list_runs",
+  "close_run",
+]);
+
 export function createMultizenMcpServer(opts: MultizenMcpServerOptions): MultizenMcpServer {
-  const { profileManager, browserDriver } = opts;
+  const { profileManager, browserDriver, scope } = opts;
   const activityLog = opts.activityLog ?? new ActivityLog();
 
   const server = new Server(
@@ -384,16 +421,20 @@ export function createMultizenMcpServer(opts: MultizenMcpServerOptions): Multize
       },
       // Returned in the `initialize` result so a connecting agent learns the
       // overall workflow up front, not just per-tool descriptions.
-      instructions: MULTIZEN_MCP_INSTRUCTIONS,
+      instructions: scope
+        ? `${MULTIZEN_MCP_INSTRUCTIONS}\n\nSCOPED ENDPOINT: you are connected to running instance "${scope.label}" (${scope.runId}). Every tool targets exactly this browser — profile_id is accepted but always resolves to this instance. close_profile stops THIS instance only.`
+        : MULTIZEN_MCP_INSTRUCTIONS,
     },
   );
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     // Hide raw cdp_send from the advertised surface unless it's explicitly
     // enabled — the default agent surface is the curated wrappers only.
-    tools: rawCdpEnabled()
-      ? TOOL_DEFINITIONS
-      : TOOL_DEFINITIONS.filter((t) => t.name !== "cdp_send"),
+    // Run-scoped servers additionally drop the profile-library management
+    // tools: their surface is exactly "drive this one browser".
+    tools: TOOL_DEFINITIONS.filter((t) => (scope ? !MANAGEMENT_ONLY_TOOLS.has(t.name) : true)).filter(
+      (t) => (rawCdpEnabled() ? true : t.name !== "cdp_send"),
+    ),
   }));
 
   server.setRequestHandler(CallToolRequestSchema, async (req) => {
@@ -403,7 +444,7 @@ export function createMultizenMcpServer(opts: MultizenMcpServerOptions): Multize
     const startedAt = Date.now();
 
     try {
-      const result = await dispatch(name, args, { profileManager, browserDriver });
+      const result = await dispatch(name, args, { profileManager, browserDriver, scope });
       activityLog.finish(event, "ok", summarize(result), startedAt);
       return ok(result);
     } catch (e) {
@@ -425,6 +466,57 @@ export function createMultizenMcpServer(opts: MultizenMcpServerOptions): Multize
 interface DispatchDeps {
   profileManager: ProfileManager;
   browserDriver: BrowserDriver;
+  scope?: { profileId: ProfileId; runId: string; label: string };
+}
+
+/** Every tool that drives a live browser — its profile_id argument resolves
+ *  to a concrete run id before the handler runs. */
+const BROWSER_OP_TOOLS = new Set([
+  "navigate",
+  "click",
+  "type",
+  "extract",
+  "screenshot",
+  "evaluate_js",
+  "wait_for_selector",
+  "list_tabs",
+  "activate_tab",
+  "close_tab",
+  "wait_for_navigation",
+  "wait_for_load",
+  "cdp_send",
+  "get_cookies",
+  "set_cookies",
+  "new_tab",
+]);
+
+/**
+ * Resolve a management-plane profile reference to the run id its browser
+ * operations should target: the profile's only live run. With multiple live
+ * runs the choice is ambiguous — refuse and point at the per-run endpoints
+ * instead of guessing (driving the WRONG browser is not recoverable).
+ */
+function resolveRunId(deps: DispatchDeps, profileId: ProfileId): string {
+  if (deps.scope) {
+    // Scoped endpoint: profile_id is accepted for client convenience but
+    // always binds to this run.
+    return deps.scope.runId;
+  }
+  const runs = deps.browserDriver.listRuns().filter((r) => r.profileId === profileId);
+  if (runs.length === 1) return runs[0]!.runId;
+  if (runs.length === 0) {
+    throw new Error(
+      `Profile ${profileId} has no running instance — call launch_profile first, then retry.`,
+    );
+  }
+  const lines = runs
+    .map((r) => `  - run ${r.runId} → MCP ${r.mcpEndpoint} (started ${r.startedAt})`)
+    .join("\n");
+  throw new Error(
+    `Profile has ${runs.length} running instances; this endpoint refuses to guess which one you mean. ` +
+      `Connect directly to the instance endpoint you want:\n${lines}\n` +
+      `(close_profile stops them all; close_run stops one by id.)`,
+  );
 }
 
 async function dispatch(
@@ -433,14 +525,26 @@ async function dispatch(
   deps: DispatchDeps,
 ): Promise<unknown> {
   const { profileManager, browserDriver } = deps;
+
+  // Browser-op tools: bind profile_id → concrete run id up front, so every
+  // handler below can treat args.profile_id as the run id to drive. (The
+  // driver's operation methods are run-addressed.)
+  if (BROWSER_OP_TOOLS.has(name)) {
+    args = { ...args };
+    args.profile_id = resolveRunId(deps, args.profile_id as string);
+  }
+
   switch (name) {
     case "list_profiles": {
-      const profiles = profileManager.list().map((p) => ({
+      const all = profileManager.list().map((p) => ({
         ...p,
         // Never echo proxy credentials to the agent — redact the summary's proxy.
         proxy: redactedProxy(p.proxy),
         isRunning: browserDriver.isRunning(p.id),
       }));
+      // Run-scoped endpoint: the library collapses to the one profile the
+      // agent is driving.
+      const profiles = deps.scope ? all.filter((p) => p.id === deps.scope!.profileId) : all;
       return { profiles };
     }
     case "create_profile": {
@@ -518,39 +622,46 @@ async function dispatch(
     }
     case "close_profile": {
       const { profile_id } = ProfileIdSchema.parse(args);
+      if (deps.scope) {
+        // Scoped endpoint: "close" means THIS running instance only.
+        await browserDriver.closeRun(deps.scope.runId);
+        return { closed: deps.scope.runId };
+      }
       await browserDriver.close(profile_id);
       return { closed: profile_id };
     }
+    case "list_runs": {
+      return { runs: browserDriver.listRuns() };
+    }
+    case "close_run": {
+      const { run_id } = z.object({ run_id: z.string().min(1) }).parse(args);
+      await browserDriver.closeRun(run_id);
+      return { closed: run_id };
+    }
     case "navigate": {
       const { profile_id, url } = NavigateSchema.parse(args);
-      assertProfileRunning(browserDriver, profile_id);
       // z.string().url() accepts file://; reject privileged schemes here.
       assertSafeUrl(url);
       return await browserDriver.navigate(profile_id, url);
     }
     case "click": {
       const { profile_id, selector } = ClickSchema.parse(args);
-      assertProfileRunning(browserDriver, profile_id);
       return await browserDriver.click(profile_id, selector);
     }
     case "type": {
       const { profile_id, selector, text } = TypeSchema.parse(args);
-      assertProfileRunning(browserDriver, profile_id);
       return await browserDriver.type(profile_id, selector, text);
     }
     case "extract": {
       const { profile_id } = ExtractSchema.parse(args);
-      assertProfileRunning(browserDriver, profile_id);
       return await browserDriver.extract(profile_id);
     }
     case "screenshot": {
       const { profile_id } = ProfileIdSchema.parse(args);
-      assertProfileRunning(browserDriver, profile_id);
       return await browserDriver.screenshot(profile_id);
     }
     case "evaluate_js": {
       const { profile_id, expression, sessionId } = EvaluateJsSchema.parse(args);
-      assertProfileRunning(browserDriver, profile_id);
       // Runtime.evaluate works without Runtime.enable — no domain is enabled.
       return await browserDriver.cdpSend(
         profile_id,
@@ -562,7 +673,6 @@ async function dispatch(
     }
     case "wait_for_selector": {
       const { profile_id, selector, timeout_ms, sessionId } = WaitForSelectorSchema.parse(args);
-      assertProfileRunning(browserDriver, profile_id);
       const expression = `!!document.querySelector(${JSON.stringify(selector)})`;
       const found = await pollUntil(
         async () => {
@@ -581,14 +691,12 @@ async function dispatch(
     }
     case "list_tabs": {
       const { profile_id, sessionId } = ListTabsSchema.parse(args);
-      assertProfileRunning(browserDriver, profile_id);
       return await browserDriver.cdpSend(profile_id, "Target.getTargets", {}, sessionId, {
         safe: true,
       });
     }
     case "activate_tab": {
       const { profile_id, target_id, sessionId } = TabIdSchema.parse(args);
-      assertProfileRunning(browserDriver, profile_id);
       return await browserDriver.cdpSend(
         profile_id,
         "Target.activateTarget",
@@ -599,7 +707,6 @@ async function dispatch(
     }
     case "close_tab": {
       const { profile_id, target_id, sessionId } = TabIdSchema.parse(args);
-      assertProfileRunning(browserDriver, profile_id);
       return await browserDriver.cdpSend(
         profile_id,
         "Target.closeTarget",
@@ -611,7 +718,6 @@ async function dispatch(
     case "wait_for_navigation":
     case "wait_for_load": {
       const { profile_id, timeout_ms, sessionId } = WaitForLoadSchema.parse(args);
-      assertProfileRunning(browserDriver, profile_id);
       // `Page` is enabled at connect, but waiting on the loadEventFired event
       // requires an event subscription the single cdpSend primitive can't
       // express. Polling document.readyState gives the same readiness signal
@@ -642,7 +748,6 @@ async function dispatch(
         );
       }
       const { profile_id, method, params, sessionId } = CdpSendSchema.parse(args);
-      assertProfileRunning(browserDriver, profile_id);
       // Engine-independent gate: denylisted method or blocked URL scheme in any
       // param → CdpPolicyError (FORBIDDEN), driver never called.
       assertCdpMethodAllowed(method, params);
@@ -650,7 +755,6 @@ async function dispatch(
     }
     case "get_cookies": {
       const { profile_id, urls, sessionId } = GetCookiesSchema.parse(args);
-      assertProfileRunning(browserDriver, profile_id);
       for (const u of urls) assertSafeUrl(u);
       // Network.getCookies works without Network.enable; the urls scope is
       // required (no dump-all) — bulk reads must be explicitly scoped.
@@ -660,7 +764,6 @@ async function dispatch(
     }
     case "set_cookies": {
       const { profile_id, cookies, sessionId } = SetCookiesSchema.parse(args);
-      assertProfileRunning(browserDriver, profile_id);
       // Network.setCookies (plural) sets the whole batch in one call without
       // Network.enable.
       return await browserDriver.cdpSend(profile_id, "Network.setCookies", { cookies }, sessionId, {
@@ -669,7 +772,6 @@ async function dispatch(
     }
     case "new_tab": {
       const { profile_id, url, sessionId } = NewTabSchema.parse(args);
-      assertProfileRunning(browserDriver, profile_id);
       if (url) assertSafeUrl(url);
       return await browserDriver.cdpSend(
         profile_id,
@@ -764,11 +866,28 @@ const TOOL_DEFINITIONS = [
   },
   {
     name: "close_profile",
-    description: "Close a running profile. Cookies and state remain on disk.",
+    description:
+      "Close a running profile — ALL of its running instances. Cookies and state remain on disk (ephemeral working copies are discarded).",
     inputSchema: {
       type: "object",
       required: ["profile_id"],
       properties: { profile_id: { type: "string" } },
+    },
+  },
+  {
+    name: "list_runs",
+    description:
+      "List every live browser instance (run) with its own MCP connection info. A profile can run several instances in parallel; each run has its OWN endpoint (http://127.0.0.1:<port>) and bearer token — connect directly to one to drive exactly that browser. On THIS management endpoint profile_id browser calls resolve only while the profile has exactly one run; with several, use each run's endpoint.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "close_run",
+    description:
+      "Close ONE running browser instance by run id (from list_runs), leaving sibling instances of the same profile untouched.",
+    inputSchema: {
+      type: "object",
+      required: ["run_id"],
+      properties: { run_id: { type: "string" } },
     },
   },
   {
@@ -1108,12 +1227,6 @@ function err(code: string, message: string) {
 function assertProfileExists(pm: ProfileManager, id: string): void {
   const p = pm.get(id);
   if (!p) throw new Error(`Profile ${id} not found`);
-}
-
-function assertProfileRunning(driver: BrowserDriver, id: string): void {
-  if (!driver.isRunning(id)) {
-    throw new Error(`Profile ${id} is not running. Call launch_profile first.`);
-  }
 }
 
 function sleep(ms: number): Promise<void> {

@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import { v4 as uuidv4 } from "uuid";
-import { cpSync, mkdirSync, rmSync } from "node:fs";
+import { copyFileSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import type {
   Profile,
@@ -62,13 +62,41 @@ interface ProfileRow {
  */
 export function copyProfileData(srcDir: string, destDir: string): void {
   mkdirSync(destDir, { recursive: true });
-  cpSync(srcDir, destDir, {
-    recursive: true,
-    // Overwrite read-only bits some Chromium state files carry (they break a
-    // naive copy on Windows); skip anything regenerable.
-    force: true,
-    filter: (p) => !SKIPPED_ON_DUPLICATE.has(basename(p)),
-  });
+  copyTreeBestEffort(srcDir, destDir);
+}
+
+/**
+ * Recursive copy that skips what it can't copy instead of failing the whole
+ * operation. Needed because the run model snapshots a profile whose FIRST
+ * instance may be LIVE on its template dir: Chromium holds Windows locks on
+ * hot files (Cookies, LOCK) and mid-write SQLite state. A skipped file means
+ * the copy carries a slightly older identity snapshot; a hard failure would
+ * make parallel instances of a live profile impossible. Regenerable caches
+ * and singleton locks are excluded via SKIPPED_ON_DUPLICATE either way.
+ */
+function copyTreeBestEffort(srcDir: string, destDir: string): void {
+  let entries;
+  try {
+    entries = readdirSync(srcDir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const e of entries) {
+    if (SKIPPED_ON_DUPLICATE.has(e.name)) continue;
+    const src = join(srcDir, e.name);
+    const dst = join(destDir, e.name);
+    if (e.isDirectory()) {
+      mkdirSync(dst, { recursive: true });
+      copyTreeBestEffort(src, dst);
+      continue;
+    }
+    try {
+      if (!statSync(src).isFile()) continue;
+      copyFileSync(src, dst);
+    } catch {
+      // Locked / vanished / unreadable mid-write — best effort continues.
+    }
+  }
 }
 
 export interface ProfileManagerOptions {

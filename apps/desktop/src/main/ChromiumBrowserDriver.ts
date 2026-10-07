@@ -4,16 +4,23 @@ import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { existsSync } from "node:fs";
 import { promises as fsp } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createServer } from "node:net";
 import { promisify } from "node:util";
 
 const execFileP = promisify(execFile);
-import type { BrowserDriver } from "@multizen/mcp-server";
+import { HttpTransport, type BrowserDriver, type RunServerFactory } from "@multizen/mcp-server";
 import type { ProfileManager } from "@multizen/profile-manager";
 import { copyProfileData, reconcileDeviceFamilyToHost } from "@multizen/profile-manager";
-import type { ClientHints, FingerprintConfig, LaunchedProfile, ProfileId } from "@multizen/types";
+import type {
+  ClientHints,
+  FingerprintConfig,
+  LaunchedProfile,
+  ProfileId,
+  RunInfo,
+} from "@multizen/types";
 import { waitForCdpSessionReady } from "./cdpReadiness";
 import type { BrowserEngine } from "@multizen/settings-store";
 import { CdpSession } from "@multizen/cdp-driver";
@@ -26,6 +33,9 @@ import { sanitizeStartUrl } from "./startPage";
 
 interface RunningProcess {
   child: ChildProcess;
+  /** The running instance this record represents (unique per browser process). */
+  runId: string;
+  profileId: ProfileId;
   cdpEndpoint: string;
   port: number;
   pid: number;
@@ -35,8 +45,13 @@ interface RunningProcess {
    *  process that still holds this profile's data dir on shutdown. */
   browserDataDir: string;
   /** Ephemeral-run working copy this browser runs against (FR-6 T2). Deleted
-   *  when the browser exits; absent for normal (persistent) profiles. */
+   *  when the browser exits; absent when running on the profile's own data. */
   ephemeralRunDir?: string;
+  /** Per-run MCP control endpoint (run-scoped tools, own port + token).
+   *  Null when no run-server factory was wired or the listen failed. */
+  mcpTransport: HttpTransport | null;
+  mcpPort: number | null;
+  mcpToken: string | null;
   /** Polls /json/list and kills the child when no page targets remain. */
   windowWatcher: NodeJS.Timeout;
 }
@@ -56,14 +71,26 @@ export interface ChromiumBrowserDriverOptions {
   /** Root for ephemeral run working copies, e.g. `<userData>/data/runs`.
    *  Ephemeral profiles materialize a fresh copy here per launch. */
   runsRoot: string;
+  /**
+   * Factory for each run's MCP control server (run-scoped tool set bound to
+   * exactly one running instance). The host wires this so run servers share
+   * the app's ProfileManager/ActivityLog. Absent → runs launch without
+   * their own MCP transport (management-plane tools still work).
+   */
+  createRunServer?: RunServerFactory;
 }
 
 export type RunningStateChange =
-  | { kind: "launched"; profileId: ProfileId }
+  | { kind: "launched"; profileId: ProfileId; runId: string }
   // Shutdown has begun (window closed / Stop pressed) but the process hasn't
   // fully exited yet — the GUI shows a "Terminating…" transitional state.
-  | { kind: "closing"; profileId: ProfileId }
-  | { kind: "closed"; profileId: ProfileId; reason: "user-close" | "external-exit" };
+  | { kind: "closing"; profileId: ProfileId; runId: string }
+  | {
+      kind: "closed";
+      profileId: ProfileId;
+      runId: string;
+      reason: "user-close" | "external-exit";
+    };
 
 interface DriverEvents {
   "running-changed": (change: RunningStateChange) => void;
@@ -80,13 +107,16 @@ interface DriverEvents {
  * calls any external API.
  */
 export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver {
-  private readonly running = new Map<ProfileId, RunningProcess>();
+  /** Keyed by RUN id — one browser process is one running instance, and a
+   *  profile may have several at once (each with its own MCP endpoint). */
+  private readonly running = new Map<string, RunningProcess>();
   private nextPort = 9222;
   private readonly profileManager: ProfileManager;
   private readonly bootstrap: ChromiumBootstrap;
   private readonly onCompanionInstall?: (profileId: ProfileId, extensionId: string) => void;
   private readonly extensionStoreRoot: string;
   private readonly runsRoot: string;
+  private readonly createRunServer?: RunServerFactory;
 
   constructor(opts: ChromiumBrowserDriverOptions) {
     super();
@@ -95,6 +125,7 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
     this.onCompanionInstall = opts.onCompanionInstall;
     this.extensionStoreRoot = opts.extensionStoreRoot;
     this.runsRoot = opts.runsRoot;
+    this.createRunServer = opts.createRunServer;
   }
 
   override on<K extends keyof DriverEvents>(event: K, listener: DriverEvents[K]): this {
@@ -109,18 +140,13 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
   }
 
   async launch(profileId: ProfileId): Promise<LaunchedProfile> {
-    const existing = this.running.get(profileId);
-    if (existing) {
-      return {
-        id: profileId,
-        cdpEndpoint: existing.cdpEndpoint,
-        pid: existing.pid,
-        startedAt: existing.startedAt,
-      };
-    }
-
     const profile = this.profileManager.get(profileId);
     if (!profile) throw new Error(`Profile ${profileId} not found`);
+
+    // One browser process = one RUN. A profile can have several runs at once;
+    // every run gets its own MCP endpoint (port + token) so an agent can bind
+    // to exactly one browser.
+    const runId = `${profileId}-${Date.now()}`;
 
     // Update `last_opened_at` for every launch, regardless of trigger
     // (UI button, MCP tool, command palette). Done early so even a
@@ -130,13 +156,18 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
     const port = await this.allocatePort();
     const chromiumPath = this.bootstrap.resolveBinaryPath();
     const engine: BrowserEngine = this.bootstrap.getEngine();
-    // FR-6 T2: ephemeral profiles never run on their template dir — every
-    // launch materializes a fresh working copy (identity carries over:
-    // cookies, logins, fingerprint; regenerable caches skipped), the browser
-    // runs against the copy, and the copy is deleted when it exits.
+    // Working-copy policy (FR-6 T2, "first run persistent, later runs ephemeral"):
+    //  - profiles flagged ephemeral: EVERY run is a disposable copy (template
+    //    is a read-only identity, always safe to parallelize);
+    //  - normal profiles: the FIRST run executes on the profile's own data
+    //    (cookies persist across sessions, unchanged behavior), and any
+    //    ADDITIONAL concurrent run gets a fresh disposable copy — Chromium's
+    //    SingletonLock forbids two processes on one data dir anyway.
+    const existingRuns = [...this.running.values()].filter((r) => r.profileId === profileId);
+    const runOnCopy = profile.ephemeral || existingRuns.length > 0;
     let ephemeralRunDir: string | undefined;
-    if (profile.ephemeral) {
-      ephemeralRunDir = join(this.runsRoot, `${profileId}-${Date.now()}`);
+    if (runOnCopy) {
+      ephemeralRunDir = join(this.runsRoot, runId);
       copyProfileData(profile.dataDir, ephemeralRunDir);
     }
     const browserDataDir = browserDataDirForEngine(
@@ -725,13 +756,42 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
       signalledClose = true;
       // Window closed but the process lingers (mac app lifecycle) — tell the GUI
       // we're terminating so the card stops showing "Stop" while it winds down.
-      this.emit("running-changed", { kind: "closing", profileId });
+      this.emit("running-changed", { kind: "closing", profileId, runId });
       // Graceful CDP shutdown — preserves session-restore on CFT too.
       void gracefulShutdown(r);
     });
 
+    // Per-run MCP control endpoint: one HTTP transport bound to its own
+    // probed port + own bearer token, serving a run-scoped tool set (tools
+    // implicitly target THIS browser). Agents connect here to drive exactly
+    // this instance — the multi-agent parallel workflow.
+    let mcpTransport: HttpTransport | null = null;
+    let mcpPort: number | null = null;
+    let mcpToken: string | null = null;
+    if (this.createRunServer) {
+      try {
+        mcpToken = randomBytes(24).toString("hex");
+        mcpPort = await this.allocatePort();
+        mcpTransport = new HttpTransport({ port: mcpPort, authToken: mcpToken });
+        await mcpTransport.start(() =>
+          this.createRunServer!({ profileId, runId, label: profile.name }),
+        );
+      } catch (e) {
+        // Non-fatal: the run is still drivable via the management plane.
+        process.stderr.write(
+          `[multizen] run MCP transport failed to start (run=${runId}): ${String(e)}\n`,
+        );
+        if (mcpTransport) void mcpTransport.stop().catch(() => {});
+        mcpTransport = null;
+        mcpPort = null;
+        mcpToken = null;
+      }
+    }
+
     const record: RunningProcess = {
       child,
+      runId,
+      profileId,
       cdpEndpoint,
       port,
       pid: child.pid,
@@ -739,17 +799,21 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
       session,
       browserDataDir,
       ephemeralRunDir,
+      mcpTransport,
+      mcpPort,
+      mcpToken,
       windowWatcher,
     };
     const r = record;
-    this.running.set(profileId, record);
+    this.running.set(runId, record);
 
     child.on("exit", () => {
-      const wasTracked = this.running.has(profileId);
+      const wasTracked = this.running.has(runId);
       clearInterval(record.windowWatcher);
       void session.close().catch(() => {});
       void stopBridgeForProfile(profileId).catch(() => {});
-      this.running.delete(profileId);
+      if (record.mcpTransport) void record.mcpTransport.stop().catch(() => {});
+      this.running.delete(runId);
       if (record.ephemeralRunDir) {
         // FR-6 T2: the working copy dies with the browser — the profile's
         // own dir is the only persistent truth. Delayed a beat because dying
@@ -760,27 +824,73 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
         }, 3000);
       }
       if (wasTracked) {
-        // close() removes from the map first so wasTracked is false there;
+        // closeRun() removes from the map first so wasTracked is false there;
         // this path covers (a) user quit Chrome directly with ⌘Q, and (b)
         // our own kill() from the windowWatcher when the last window closed.
-        this.emit("running-changed", { kind: "closed", profileId, reason: "external-exit" });
+        this.emit("running-changed", {
+          kind: "closed",
+          profileId,
+          runId,
+          reason: "external-exit",
+        });
       }
     });
 
-    this.emit("running-changed", { kind: "launched", profileId });
-    return { id: profileId, cdpEndpoint, pid: child.pid, startedAt };
+    this.emit("running-changed", { kind: "launched", profileId, runId });
+    return {
+      id: profileId,
+      runId,
+      cdpEndpoint,
+      pid: child.pid,
+      startedAt,
+      ...(mcpPort !== null && mcpToken !== null
+        ? { mcpPort, mcpToken, mcpEndpoint: `http://127.0.0.1:${mcpPort}` }
+        : {}),
+    };
+  }
+
+  /** Every live run of a profile, oldest first. */
+  private runsOf(profileId: ProfileId): RunningProcess[] {
+    return [...this.running.values()]
+      .filter((r) => r.profileId === profileId)
+      .sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+  }
+
+  listRuns(): RunInfo[] {
+    return [...this.running.values()]
+      .sort((a, b) => a.startedAt.localeCompare(b.startedAt))
+      .map((r) => ({
+        runId: r.runId,
+        profileId: r.profileId,
+        profileName: this.profileManager.get(r.profileId)?.name,
+        startedAt: r.startedAt,
+        cdpEndpoint: r.cdpEndpoint,
+        pid: r.pid,
+        mcpPort: r.mcpPort ?? 0,
+        mcpEndpoint:
+          r.mcpPort !== null ? `http://127.0.0.1:${r.mcpPort}` : "(unavailable)",
+        mcpToken: r.mcpToken ?? "",
+        ephemeral: r.ephemeralRunDir !== undefined,
+      }));
   }
 
   async close(profileId: ProfileId): Promise<void> {
-    const r = this.running.get(profileId);
+    // Close EVERY running instance of the profile (GUI "Stop" and MCP
+    // close_profile semantics: the profile winds down entirely).
+    const runs = this.runsOf(profileId);
+    await Promise.all(runs.map((r) => this.closeRun(r.runId)));
+  }
+
+  async closeRun(runId: string): Promise<void> {
+    const r = this.running.get(runId);
     if (!r) return;
-    console.log(`[multizen] close() profile=${profileId} pid=${r.pid}`);
+    console.log(`[multizen] closeRun() run=${runId} profile=${r.profileId} pid=${r.pid}`);
     // Signal the terminating phase up front (covers MCP/external callers that
     // don't drive the button's local "Stopping…" state).
-    this.emit("running-changed", { kind: "closing", profileId });
+    this.emit("running-changed", { kind: "closing", profileId: r.profileId, runId });
     // Remove from map first so the child.on('exit') handler treats this as
     // a planned close (no event emitted from there).
-    this.running.delete(profileId);
+    this.running.delete(runId);
     clearInterval(r.windowWatcher);
     // Always emit "closed" — even if shutdown throws — so the GUI's terminating
     // state can never get stranded.
@@ -791,70 +901,79 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
       // forever (the real bug behind "Stop leaves Chromium running").
       await gracefulShutdown(r);
       // Belt-and-suspenders: after the PID-based shutdown, sweep for ANY
-      // process still holding this profile's user-data-dir and SIGKILL it.
+      // process still holding this run's user-data-dir and SIGKILL it.
       // Catches re-parented/forked survivors (or leftover helpers) that the
-      // single tracked PID could miss.
+      // single tracked PID could miss. NOTE: for a first (persistent) run this
+      // is the profile's own dir — a sibling ephemeral run has its own.
       await killBrowsersUsingDataDir(r.browserDataDir);
-      // Browser is gone now, so the bridge closes immediately. Timeout-bounded
+      // Browser is gone now, so the bridge closes immediately (refcounted —
+      // sibling runs of the same profile keep it alive). Timeout-bounded
       // anyway so a stuck socket can never strand Stop.
-      await withTimeout(stopBridgeForProfile(profileId), 2000);
+      await withTimeout(stopBridgeForProfile(r.profileId), 2000);
     } finally {
-      console.log(`[multizen] close() done profile=${profileId} pid=${r.pid} alive=${isPidAlive(r.pid)}`);
-      this.emit("running-changed", { kind: "closed", profileId, reason: "user-close" });
+      console.log(
+        `[multizen] closeRun() done run=${runId} pid=${r.pid} alive=${isPidAlive(r.pid)}`,
+      );
+      this.emit("running-changed", {
+        kind: "closed",
+        profileId: r.profileId,
+        runId,
+        reason: "user-close",
+      });
     }
   }
 
   isRunning(profileId: ProfileId): boolean {
-    return this.running.has(profileId);
+    return [...this.running.values()].some((r) => r.profileId === profileId);
   }
 
-  async navigate(profileId: ProfileId, url: string): Promise<{ url: string }> {
-    const session = this.requireSession(profileId);
+  async navigate(runId: string, url: string): Promise<{ url: string }> {
+    const session = this.requireSession(runId);
     const result = await session.navigate(url);
     return { url: result.url };
   }
 
-  async click(profileId: ProfileId, selector: string): Promise<{ ok: true }> {
-    const session = this.requireSession(profileId);
+  async click(runId: string, selector: string): Promise<{ ok: true }> {
+    const session = this.requireSession(runId);
     await session.click(selector);
     return { ok: true };
   }
 
-  async type(profileId: ProfileId, selector: string, text: string): Promise<{ ok: true }> {
-    const session = this.requireSession(profileId);
+  async type(runId: string, selector: string, text: string): Promise<{ ok: true }> {
+    const session = this.requireSession(runId);
     await session.type(selector, text);
     return { ok: true };
   }
 
-  async extract(profileId: ProfileId): Promise<{ result: unknown }> {
-    const session = this.requireSession(profileId);
+  async extract(runId: string): Promise<{ result: unknown }> {
+    const session = this.requireSession(runId);
     return session.extract();
   }
 
-  async screenshot(profileId: ProfileId): Promise<{ pngBase64: string }> {
-    const session = this.requireSession(profileId);
+  async screenshot(runId: string): Promise<{ pngBase64: string }> {
+    const session = this.requireSession(runId);
     return session.screenshot();
   }
 
   async cdpSend(
-    profileId: ProfileId,
+    runId: string,
     method: string,
     params?: Record<string, unknown>,
     sessionId?: string,
     opts?: { safe?: boolean },
   ): Promise<unknown> {
-    const session = this.requireSession(profileId);
+    const session = this.requireSession(runId);
     return session.cdpSend(method, params, sessionId, opts);
   }
 
   async closeAll(): Promise<void> {
     const ids = [...this.running.keys()];
-    await Promise.all(ids.map((id) => this.close(id)));
+    await Promise.all(ids.map((id) => this.closeRun(id)));
   }
 
-  private requireSession(profileId: ProfileId): CdpSession {
-    const r = this.running.get(profileId);
-    if (!r) throw new Error(`Profile ${profileId} is not running`);
+  private requireSession(runId: string): CdpSession {
+    const r = this.running.get(runId);
+    if (!r) throw new Error(`Running instance ${runId} is not active`);
     return r.session;
   }
 

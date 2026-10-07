@@ -7,5 +7,6 @@ export type { HttpTransportOptions } from "./HttpTransport.js";
 export type {
   MultizenMcpServerOptions,
   MultizenMcpServer,
+  RunServerFactory,
   BrowserDriver,
 } from "./server.js";

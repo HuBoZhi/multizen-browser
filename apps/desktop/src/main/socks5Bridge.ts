@@ -37,6 +37,11 @@ interface BridgeHandle {
 }
 
 const byProfile = new Map<ProfileId, BridgeHandle>();
+/** Live users per bridge — a profile's bridge is shared by ALL of its running
+ *  instances (same egress IP by design), so it closes only when the LAST
+ *  run releases it. Without refcounting, run #1 exiting would kill the
+ *  bridge run #2 is actively routing through. */
+const bridgeRefs = new Map<ProfileId, number>();
 
 /** Rate-limit the per-request bridge failure logs. A dead/blocked upstream
  *  proxy fails EVERY CONNECT (e.g. "403 Forbidden"), which floods stderr with
@@ -54,14 +59,28 @@ export async function startBridgeForProfile(
   upstream: ProxyConfig,
 ): Promise<string> {
   const existing = byProfile.get(profileId);
-  if (existing) return `socks5://127.0.0.1:${existing.port}`;
+  if (existing) {
+    bridgeRefs.set(profileId, (bridgeRefs.get(profileId) ?? 0) + 1);
+    return `socks5://127.0.0.1:${existing.port}`;
+  }
 
   const handle = await startBridge(upstream);
   byProfile.set(profileId, handle);
+  bridgeRefs.set(profileId, 1);
   return `socks5://127.0.0.1:${handle.port}`;
 }
 
+/**
+ * Drop one run's claim on the profile bridge. The bridge actually closes
+ * only when the last claim is released — with multiple instances of the
+ * same profile running, each exit decrements instead of killing the shared
+ * bridge out from under the survivors.
+ */
 export async function stopBridgeForProfile(profileId: ProfileId): Promise<void> {
+  const refs = (bridgeRefs.get(profileId) ?? 1) - 1;
+  bridgeRefs.set(profileId, Math.max(refs, 0));
+  if (refs > 0) return;
+  bridgeRefs.delete(profileId);
   const handle = byProfile.get(profileId);
   if (!handle) return;
   byProfile.delete(profileId);

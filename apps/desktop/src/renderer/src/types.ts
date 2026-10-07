@@ -50,6 +50,8 @@ export interface ProxyGeoResult {
 }
 import type { ActivityEvent } from "@multizen/mcp-server";
 import type { AppSettings } from "@multizen/settings-store";
+import type { RunInfo } from "@multizen/types";
+export type { RunInfo };
 
 export interface SystemInfo {
   /** Which multi-instance id this app is (null = default single instance). */
@@ -95,6 +97,10 @@ export interface MultizenApi {
   activity: {
     recent: () => Promise<ActivityEvent[]>;
     onEvent: (cb: (e: ActivityEvent) => void) => () => void;
+  };
+  runs: {
+    /** Every live browser instance with its own MCP endpoint + token. */
+    list: () => Promise<RunInfo[]>;
   };
   system: {
     info: () => Promise<SystemInfo>;

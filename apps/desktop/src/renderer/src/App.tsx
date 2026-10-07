@@ -16,7 +16,7 @@ import { ChromiumBootstrapModal } from "./components/onboarding/ChromiumBootstra
 import { UpdateBanner } from "./components/UpdateBanner";
 import { Modal, ConfirmHost, confirm } from "./components/atoms";
 import { readPersisted, usePersistedState, writePersisted } from "./lib/persisted";
-import type { ActivityEvent, ChromiumStatus, ProfileSummary, SystemInfo } from "./types";
+import type { ActivityEvent, ChromiumStatus, ProfileSummary, RunInfo, SystemInfo } from "./types";
 
 type ModalState =
   | { kind: "none" }
@@ -47,6 +47,7 @@ export function App(): JSX.Element {
   const closingTimers = useRef<Map<string, number>>(new Map());
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [info, setInfo] = useState<SystemInfo | null>(null);
+  const [runs, setRuns] = useState<RunInfo[]>([]);
   // Whether the Chromium runtime is ready — used to suppress the update banner
   // while the blocking first-run bootstrap modal is up, so they don't compete.
   const [chromiumReady, setChromiumReady] = useState(false);
@@ -91,8 +92,12 @@ export function App(): JSX.Element {
 
   const refresh = useCallback(async () => {
     if (!window.multizen) return;
-    const list = await window.multizen.profiles.list();
+    const [list, liveRuns] = await Promise.all([
+      window.multizen.profiles.list(),
+      window.multizen.runs.list(),
+    ]);
     setProfiles(list);
+    setRuns(liveRuns);
   }, []);
 
   // Initial load + activity stream subscription
@@ -420,6 +425,7 @@ export function App(): JSX.Element {
             <McpPanel
               events={events}
               profiles={profiles}
+              runs={runs}
               mcpUrl={info?.mcpHttpUrl ?? null}
               mcpToken={info?.mcpAuthToken ?? null}
               instanceId={info?.instanceId ?? null}

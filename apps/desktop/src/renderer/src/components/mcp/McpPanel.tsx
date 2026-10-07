@@ -1,12 +1,15 @@
 import { useMemo, useState, type JSX } from "react";
 import { Check, Copy, Plug, Sparkles, Terminal } from "lucide-react";
 import type { ActivityEvent, ProfileSummary } from "../../types";
+import type { RunInfo } from "@multizen/types";
 import { Pill, Flag, ccFromTimezone } from "../atoms";
 import { formatTime } from "../../lib/relativeTime";
 
 interface Props {
   events: ActivityEvent[];
   profiles: ProfileSummary[];
+  /** Live browser instances, each with its own MCP endpoint + token. */
+  runs?: RunInfo[];
   /** MCP HTTP base URL (e.g. http://127.0.0.1:7777) or null when the server is off. */
   mcpUrl: string | null;
   /** Bearer token every MCP client must send; null when the server is off. */
@@ -20,7 +23,7 @@ interface Props {
  * does. Top half = a "Connect an agent" card (endpoint + copy-paste client
  * config); bottom half = the live feed of MCP tool calls.
  */
-export function McpPanel({ events, profiles, mcpUrl, mcpToken, instanceId }: Props): JSX.Element {
+export function McpPanel({ events, profiles, runs, mcpUrl, mcpToken, instanceId }: Props): JSX.Element {
   const profilesById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
   const recent = useMemo(() => events.slice().reverse(), [events]);
 
@@ -47,6 +50,8 @@ export function McpPanel({ events, profiles, mcpUrl, mcpToken, instanceId }: Pro
         </div>
 
         <ConnectCard baseUrl={mcpUrl} token={mcpToken} />
+
+        {runs && runs.length > 0 && <RunsCard runs={runs} />}
 
         {/* Live feed */}
         <div className="flex items-baseline gap-2.5 mt-7 mb-2.5">
@@ -460,4 +465,84 @@ function StatusPill({ status }: { status: ActivityEvent["status"] }): JSX.Elemen
   if (status === "ok") return <Pill kind="running">ok</Pill>;
   if (status === "pending") return <Pill kind="ai" dot>live</Pill>;
   return <Pill kind="error">error</Pill>;
+}
+
+/**
+ * Live browser instances (run model): every running profile instance gets its
+ * OWN MCP endpoint + bearer token, so an agent can bind to exactly one
+ * browser while another agent drives a sibling instance of the same profile.
+ */
+function RunsCard({ runs }: { runs: RunInfo[] }): JSX.Element {
+  return (
+    <div
+      className="mt-4"
+      style={{
+        borderRadius: 18,
+        background: "rgba(255,255,255,0.02)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
+        padding: 18,
+      }}
+    >
+      <div className="flex items-center gap-2.5 mb-3">
+        <div
+          className="flex items-center justify-center"
+          style={{
+            width: 30,
+            height: 30,
+            borderRadius: 9,
+            background: "rgba(52,211,153,0.12)",
+            color: "#34d399",
+            boxShadow: "inset 0 0 0 1px rgba(52,211,153,0.22)",
+          }}
+        >
+          <Plug size={15} />
+        </div>
+        <div>
+          <div className="text-[13px] font-semibold text-slate-100">
+            Running browser instances
+          </div>
+          <div className="text-[11px] text-slate-500">
+            Each instance has its own MCP endpoint — point an agent at one to drive exactly that
+            browser.
+          </div>
+        </div>
+        <span className="mono text-[10px] text-slate-500 ml-auto">{runs.length} live</span>
+      </div>
+      <div className="space-y-3">
+        {runs.map((r) => (
+          <div
+            key={r.runId}
+            style={{
+              borderRadius: 12,
+              background: "rgba(0,0,0,0.2)",
+              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)",
+              padding: 12,
+            }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[12px] font-semibold text-slate-200 truncate">
+                {r.profileName ?? r.profileId}
+              </span>
+              {r.ephemeral && (
+                <span
+                  className="mono text-[9px] px-1.5 py-0.5 rounded text-amber-300"
+                  style={{ background: "rgba(245,158,11,0.10)" }}
+                  title="This instance runs on a disposable working copy — changes are discarded when it closes."
+                >
+                  ephemeral
+                </span>
+              )}
+              <span className="mono text-[10px] text-slate-600 ml-auto truncate">
+                run {r.runId.slice(-6)} · since {formatTime(r.startedAt)}
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              <CopyRow value={r.mcpEndpoint} mono />
+              <CopyRow value={r.mcpToken} mono />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }

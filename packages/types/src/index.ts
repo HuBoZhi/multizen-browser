@@ -192,6 +192,10 @@ export interface ProfileSummary {
   tags: string[];
   lastOpenedAt?: string;
   isRunning: boolean;
+  /** Live browser instances of this profile (run model: a profile can run
+   *  several at once, each with its own MCP endpoint). Absent from contexts
+   *  that don't compute it. */
+  runCount?: number;
   /** User-picked emoji avatar (empty → GUI derives a default from name/tags/id). */
   icon?: string;
   /** Proxy config (denormalised so the GUI can render a proxy chip without a second fetch) */
@@ -234,9 +238,31 @@ export interface UpdateProfileInput {
 
 export interface LaunchedProfile {
   id: ProfileId;
+  /** The running instance this launch created (unique per browser process). */
+  runId: string;
   cdpEndpoint: string;
   pid: number;
   startedAt: string;
+  /** Per-run MCP endpoint (control plane bound to THIS browser instance). */
+  mcpPort?: number;
+  mcpEndpoint?: string;
+  mcpToken?: string;
+}
+
+/** A live browser instance surfaced by the driver (one per browser process). */
+export interface RunInfo {
+  runId: string;
+  profileId: ProfileId;
+  profileName?: string;
+  startedAt: string;
+  cdpEndpoint: string;
+  pid?: number;
+  /** Per-run MCP control endpoint + bearer token. */
+  mcpPort: number;
+  mcpEndpoint: string;
+  mcpToken: string;
+  /** True when this run executes on a disposable working copy. */
+  ephemeral: boolean;
 }
 
 export interface McpToolError {
