@@ -1,13 +1,18 @@
 import type { JSX } from "react";
 import { ProfileRow } from "./ProfileRow";
+import type { RunInfo } from "@multizen/types";
 import type { TileData } from "./ProfileTile";
 
 interface Props {
   profiles: TileData[];
+  /** Live browser instances (run model) — enables per-run close in the UI. */
+  runs?: RunInfo[];
   /** Profiles in the terminating phase (winding down, not yet exited). */
   closingIds?: Set<string>;
   onSelect: (id: string) => void;
   onLaunch: (id: string) => Promise<void> | void;
+  onNewInstance: (id: string) => Promise<void> | void;
+  onCloseRun: (runId: string) => void;
   onStop: (id: string) => Promise<void> | void;
   onExport: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -32,9 +37,12 @@ const COLUMNS: ReadonlyArray<{ label: string; align?: "left" | "right" }> = [
 
 export function ProfileTable({
   profiles,
+  runs,
   closingIds,
   onSelect,
   onLaunch,
+  onNewInstance,
+  onCloseRun,
   onStop,
   onExport,
   onDuplicate,
@@ -74,9 +82,11 @@ export function ProfileTable({
         <ProfileRow
           key={p.id}
           profile={p}
+          runs={runs?.filter((r) => r.profileId === p.id)}
           terminating={closingIds?.has(p.id) ?? false}
           onOpen={() => onSelect(p.id)}
           onLaunch={() => onLaunch(p.id)}
+          onNewInstance={() => onNewInstance(p.id)}
           onStop={() => onStop(p.id)}
           onExport={() => onExport(p.id)}
           onDuplicate={() => onDuplicate(p.id)}

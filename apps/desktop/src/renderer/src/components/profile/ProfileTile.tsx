@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type JSX } from "react";
 import { createPortal } from "react-dom";
-import { Loader2, MoreHorizontal, Pencil, Play, RefreshCw, Square, Zap } from "lucide-react";
+import { Loader2, MoreHorizontal, Pencil, Play, Plus, RefreshCw, Square, X, Zap } from "lucide-react";
+import type { RunInfo } from "@multizen/types";
 import type { ProfileSummary } from "../../types";
 import {
   Avatar,
@@ -50,11 +51,17 @@ const GLOW_BY_STATE: Record<TileState, string> = {
 
 interface Props {
   profile: TileData;
+  /** This profile's live browser instances (run model). */
+  runs?: RunInfo[];
   /** Chromium is winding down (window closed / Stop pressed) but not yet
    *  exited — show a "Terminating…" transitional state instead of "Stop". */
   terminating?: boolean;
   onOpen: () => void;
   onLaunch: () => Promise<void> | void;
+  /** Launch ONE MORE instance (run 2+ executes on a disposable copy). */
+  onNewInstance: () => Promise<void> | void;
+  /** Close exactly one running instance by run id. */
+  onCloseRun: (runId: string) => void;
   onStop: () => Promise<void> | void;
   onExport: () => void;
   onDuplicate: () => void;
@@ -63,15 +70,23 @@ interface Props {
 
 export function ProfileTile({
   profile,
+  runs,
   terminating = false,
   onOpen,
   onLaunch,
+  onNewInstance,
+  onCloseRun,
   onStop,
   onExport,
   onDuplicate,
   onDelete,
 }: Props): JSX.Element {
   const isRunning = profile.state !== "idle";
+  const liveRuns = runs ?? [];
+  // Run-model wind-down: the profile-level "terminating" flag only blocks the
+  // buttons when NO live runs remain (everything is going away). With runs
+  // still alive, sibling instances stay fully controllable.
+  const showTerminating = terminating && liveRuns.length === 0;
   // Emoji avatar: user's custom `icon` if set, else a classifier-derived
   // default from name/tags/id, on a deterministic muted tile tint.
   const emoji = profileEmoji(profile.icon, profile.name, profile.tags, profile.id);
@@ -99,6 +114,22 @@ export function ProfileTile({
     // Safety net: if the launch never produced a state change (e.g. error toast),
     // unlock after 5s so the button doesn't stay disabled forever.
     window.setTimeout(() => setPending(false), 5000);
+  }
+
+  async function handleNewInstance(): Promise<void> {
+    if (pending) return;
+    setPending(true);
+    try {
+      await onNewInstance();
+    } catch {
+      setPending(false);
+    }
+    window.setTimeout(() => setPending(false), 5000);
+  }
+
+  function handleCloseRun(e: React.MouseEvent, runId: string): void {
+    e.stopPropagation();
+    onCloseRun(runId);
   }
 
   async function handleStop(): Promise<void> {
@@ -199,42 +230,98 @@ export function ProfileTile({
         </span>
       </div>
 
-      {/* Actions — pinned to the card bottom so Launch aligns across a row
-          regardless of how much content (tags / context line) sits above. */}
-      <div className="flex gap-1.5 mt-auto pt-1">
-        {terminating ? (
-          <Button
-            variant="secondary"
-            size="md"
-            fullWidth
-            disabled
-            leftIcon={<Loader2 size={11} className="animate-spin" />}
-          >
-            Terminating…
-          </Button>
-        ) : !isRunning ? (
-          <Button
-            variant="accent"
-            size="md"
-            fullWidth
-            disabled={pending}
-            onClick={handleLaunch}
-            leftIcon={<Play size={11} fill="currentColor" strokeWidth={0} />}
-          >
-            {pending ? "Launching…" : "Launch"}
-          </Button>
-        ) : (
-          <Button
-            variant="secondary"
-            size="md"
-            fullWidth
-            disabled={pending}
-            onClick={handleStop}
-            leftIcon={<Square size={10} fill="currentColor" strokeWidth={0} />}
-          >
-            {pending ? "Stopping…" : "Stop"}
-          </Button>
+      {/* Actions — pinned to the card bottom so buttons align across a row
+          regardless of how much content (tags / context line) sits above.
+          Run model: idle → single Launch; running → [+ New instance] [Stop all]
+          plus one row per live instance with its own close (✕) control. */}
+      <div className="mt-auto pt-1 space-y-1.5">
+        {liveRuns.length > 0 && (
+          <div className="space-y-1">
+            {liveRuns.map((r) => (
+              <div
+                key={r.runId}
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-[10px]"
+                style={{ background: "rgba(16,185,153,0.05)", boxShadow: "inset 0 0 0 1px rgba(16,185,153,0.16)" }}
+              >
+                <span
+                  className="w-[6px] h-[6px] rounded-full bg-emerald-400 flex-shrink-0"
+                  style={{ animation: "mz-dotpulse 1.6s ease-in-out infinite" }}
+                />
+                <span className="mono text-[11px] text-emerald-300 truncate">
+                  :{r.mcpPort}
+                </span>
+                {r.ephemeral && (
+                  <span
+                    className="mono text-[9px] px-1 py-px rounded text-amber-300 flex-shrink-0"
+                    style={{ background: "rgba(245,158,11,0.10)" }}
+                    title="This instance runs on a disposable working copy — its changes are discarded when it closes."
+                  >
+                    ephemeral
+                  </span>
+                )}
+                <span className="mono text-[9px] text-slate-600 ml-auto flex-shrink-0">
+                  {relativeTime(r.startedAt)}
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => handleCloseRun(e, r.runId)}
+                  title="Close this instance (other instances stay up)"
+                  aria-label="Close this instance"
+                  className="no-drag w-5 h-5 rounded-md flex items-center justify-center text-slate-500 hover:text-red-300 hover:bg-red-400/10 transition-colors cursor-pointer border-0 bg-transparent flex-shrink-0"
+                >
+                  <X size={11} />
+                </button>
+              </div>
+            ))}
+          </div>
         )}
+        <div className="flex gap-1.5">
+          {showTerminating ? (
+            <Button
+              variant="secondary"
+              size="md"
+              fullWidth
+              disabled
+              leftIcon={<Loader2 size={11} className="animate-spin" />}
+            >
+              Terminating…
+            </Button>
+          ) : !isRunning ? (
+            <Button
+              variant="accent"
+              size="md"
+              fullWidth
+              disabled={pending}
+              onClick={handleLaunch}
+              leftIcon={<Play size={11} fill="currentColor" strokeWidth={0} />}
+            >
+              {pending ? "Launching…" : "Launch"}
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="accent"
+                size="md"
+                fullWidth
+                disabled={pending}
+                onClick={handleNewInstance}
+                leftIcon={<Plus size={11} strokeWidth={2.5} />}
+              >
+                {pending ? "Starting…" : "New instance"}
+              </Button>
+              <Button
+                variant="secondary"
+                size="md"
+                disabled={pending}
+                onClick={handleStop}
+                title="Close ALL instances of this profile"
+                leftIcon={<Square size={10} fill="currentColor" strokeWidth={0} />}
+              >
+                Stop all
+              </Button>
+            </>
+          )}
+        </div>
         <ActionMenu onEdit={onOpen} onExport={onExport} onDuplicate={onDuplicate} onDelete={onDelete} />
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type JSX } from "react";
 import { createPortal } from "react-dom";
-import { ChevronRight, Loader2, MoreHorizontal, Play, RefreshCw, Square, Zap } from "lucide-react";
+import { ChevronRight, Loader2, MoreHorizontal, Play, Plus, RefreshCw, Square, Zap } from "lucide-react";
+import type { RunInfo } from "@multizen/types";
 import {
   Avatar,
   Flag,
@@ -28,10 +29,14 @@ const STATE_RING_COLOR: Record<TileState, string> = {
 
 interface Props {
   profile: TileData;
+  /** This profile's live browser instances (run model). */
+  runs?: RunInfo[];
   /** Chromium winding down (window closed / Stop) but not yet exited. */
   terminating?: boolean;
   onOpen: () => void;
   onLaunch: () => Promise<void> | void;
+  /** Launch ONE MORE instance (run 2+ executes on a disposable copy). */
+  onNewInstance: () => Promise<void> | void;
   onStop: () => Promise<void> | void;
   onExport: () => void;
   onDuplicate: () => void;
@@ -41,15 +46,19 @@ interface Props {
 /** A dense row equivalent of <ProfileTile />. Same data, same handlers. */
 export function ProfileRow({
   profile,
+  runs,
   terminating = false,
   onOpen,
   onLaunch,
+  onNewInstance,
   onStop,
   onExport,
   onDuplicate,
   onDelete,
 }: Props): JSX.Element {
   const isRunning = profile.state !== "idle";
+  const liveRuns = runs ?? [];
+  const showTerminating = terminating && liveRuns.length === 0;
   // Emoji avatar (parity with the grid card): user's custom `icon` if set, else
   // a classifier-derived default from name/tags/id, on a deterministic tint.
   const emoji = profileEmoji(profile.icon, profile.name, profile.tags, profile.id);
@@ -64,6 +73,18 @@ export function ProfileRow({
     setPending(true);
     try {
       await onLaunch();
+    } catch {
+      setPending(false);
+    }
+    window.setTimeout(() => setPending(false), 5000);
+  }
+
+  async function handleNewInstance(e: React.MouseEvent): Promise<void> {
+    e.stopPropagation();
+    if (pending) return;
+    setPending(true);
+    try {
+      await onNewInstance();
     } catch {
       setPending(false);
     }
@@ -127,7 +148,7 @@ export function ProfileRow({
 
       {/* Status pill + AI tool inline */}
       <div className="flex items-center min-w-0">
-        <PillForState profile={profile} />
+        <PillForState profile={profile} runCount={liveRuns.length} />
       </div>
 
       {/* Tags */}
@@ -167,7 +188,7 @@ export function ProfileRow({
           isRunning || terminating ? "opacity-100" : "opacity-0 group-hover:opacity-100",
         )}
       >
-        {terminating ? (
+        {showTerminating ? (
           <Button
             variant="secondary"
             size="sm"
@@ -188,15 +209,28 @@ export function ProfileRow({
             {pending ? "…" : "Launch"}
           </Button>
         ) : (
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={pending}
-            onClick={handleStop}
-            leftIcon={<Square size={9} fill="currentColor" strokeWidth={0} />}
-          >
-            {pending ? "…" : "Stop"}
-          </Button>
+          <>
+            <Button
+              variant="accent"
+              size="sm"
+              disabled={pending}
+              onClick={handleNewInstance}
+              title={"Launch one more instance" + (liveRuns.length ? ` (${liveRuns.length} running: ${liveRuns.map((r) => ":" + r.mcpPort).join(", ")})` : "")}
+              leftIcon={<Plus size={10} strokeWidth={2.5} />}
+            >
+              {pending ? "…" : "New"}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={pending}
+              onClick={handleStop}
+              title="Close ALL instances"
+              leftIcon={<Square size={9} fill="currentColor" strokeWidth={0} />}
+            >
+              Stop all
+            </Button>
+          </>
         )}
         <RowMenu onEdit={onOpen} onExport={onExport} onDuplicate={onDuplicate} onDelete={onDelete} />
       </div>
@@ -204,7 +238,7 @@ export function ProfileRow({
   );
 }
 
-function PillForState({ profile }: { profile: TileData }): JSX.Element {
+function PillForState({ profile, runCount = 0 }: { profile: TileData; runCount?: number }): JSX.Element {
   if (profile.state === "ai") {
     return (
       <span
@@ -222,7 +256,7 @@ function PillForState({ profile }: { profile: TileData }): JSX.Element {
     );
   }
   if (profile.state === "running")
-    return <Pill kind="running" dot>running</Pill>;
+    return <Pill kind="running" dot>{runCount > 1 ? `running ×${runCount}` : "running"}</Pill>;
   if (profile.state === "error")
     // Dense row: surface the message as a hover tooltip (the grid card has room
     // for a full error line; here the status column does not).

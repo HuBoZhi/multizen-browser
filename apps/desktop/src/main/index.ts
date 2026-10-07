@@ -591,6 +591,7 @@ app.whenReady().then(async () => {
   // Run-model IPC: every live browser instance + its own MCP connection info
   // (the MCP panel renders these so the user can copy an endpoint per run).
   ipcMain.handle("runs:list", () => browserDriver.listRuns());
+  ipcMain.handle("runs:close", (_e, runId: string) => browserDriver.closeRun(runId));
   ipcMain.handle("profiles:get", (_e, id: string) => profileManager.get(id));
   ipcMain.handle("profiles:create", (_e, input: Parameters<ProfileManager["create"]>[0]) =>
     profileManager.create(input),

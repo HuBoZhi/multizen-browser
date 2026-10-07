@@ -1,6 +1,7 @@
 import { useMemo, useState, type JSX } from "react";
 import { Grid3x3, List, Plus } from "lucide-react";
 import type { ProfileSummary, ActivityEvent } from "../../types";
+import type { RunInfo } from "@multizen/types";
 import { Kbd } from "../atoms";
 import { ProfileTile, deriveTileState, type TileData, type TileState } from "./ProfileTile";
 import { ProfileTable } from "./ProfileTable";
@@ -32,12 +33,18 @@ const DOT_COLOR: Record<TileState, string> = {
 
 interface Props {
   profiles: ProfileSummary[];
+  /** Live browser instances (run model) — enables per-run close in the UI. */
+  runs?: RunInfo[];
   recentEvents: ActivityEvent[];
   /** Profiles in the terminating phase (winding down, not yet exited). */
   closingIds?: Set<string>;
   onSelect: (id: string) => void;
   onCreate: () => void;
   onLaunch: (id: string) => void;
+  /** Launch ONE MORE instance of the profile (run 2+ on a disposable copy). */
+  onNewInstance: (id: string) => void;
+  /** Close exactly one running instance by run id. */
+  onCloseRun: (runId: string) => void;
   onStop: (id: string) => void;
   onExport: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -46,12 +53,15 @@ interface Props {
 
 export function Constellation({
   profiles,
+  runs,
   recentEvents,
   closingIds,
   onSelect,
   onCreate,
   onLaunch,
   onStop,
+  onNewInstance,
+  onCloseRun,
   onExport,
   onDuplicate,
   onDelete,
@@ -224,9 +234,12 @@ export function Constellation({
         ) : viewMode === "list" ? (
           <ProfileTable
             profiles={filtered}
+            runs={runs}
             closingIds={closingIds}
             onSelect={onSelect}
             onLaunch={onLaunch}
+            onNewInstance={onNewInstance}
+            onCloseRun={onCloseRun}
             onStop={onStop}
             onExport={onExport}
             onDuplicate={onDuplicate}
@@ -243,9 +256,12 @@ export function Constellation({
               <ProfileTile
                 key={p.id}
                 profile={p}
+                runs={runs?.filter((r) => r.profileId === p.id)}
                 terminating={closingIds?.has(p.id) ?? false}
                 onOpen={() => onSelect(p.id)}
                 onLaunch={() => onLaunch(p.id)}
+                onNewInstance={() => onNewInstance(p.id)}
+                onCloseRun={onCloseRun}
                 onStop={() => onStop(p.id)}
                 onExport={() => onExport(p.id)}
                 onDuplicate={() => onDuplicate(p.id)}

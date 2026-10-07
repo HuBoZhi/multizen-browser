@@ -101,6 +101,8 @@ export interface MultizenApi {
   runs: {
     /** Every live browser instance with its own MCP endpoint + token. */
     list: () => Promise<RunInfo[]>;
+    /** Close ONE running instance by run id (siblings stay up). */
+    close: (runId: string) => Promise<void>;
   };
   system: {
     info: () => Promise<SystemInfo>;

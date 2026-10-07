@@ -263,6 +263,22 @@ export function App(): JSX.Element {
     await refresh();
   }
 
+  // Run model: launch one more instance of the profile (each gets its own
+  // MCP endpoint; run 2+ executes on a disposable working copy).
+  async function newInstance(id: string): Promise<void> {
+    await launchProfile(id);
+  }
+
+  // Close exactly ONE running instance; sibling instances stay up.
+  async function closeRun(runId: string): Promise<void> {
+    try {
+      await window.multizen.runs.close(runId);
+    } catch {
+      /* driver emits "closed" regardless; state self-heals */
+    }
+    await refresh();
+  }
+
   async function closeProfile(id: string): Promise<void> {
     // close() may reject if graceful shutdown throws, but the driver's
     // finally still emits "closed" (which drives its own refresh), so a
@@ -407,11 +423,14 @@ export function App(): JSX.Element {
               ) : (
                 <Constellation
                   profiles={profiles}
+                  runs={runs}
                   recentEvents={events}
                   closingIds={closingIds}
                   onSelect={openEditFor}
                   onCreate={() => setShowSheet(true)}
                   onLaunch={launchProfile}
+                  onNewInstance={newInstance}
+                  onCloseRun={closeRun}
                   onStop={closeProfile}
                   onExport={(id) => setModal({ kind: "export-passphrase", profileId: id })}
                   onDuplicate={duplicateProfile}

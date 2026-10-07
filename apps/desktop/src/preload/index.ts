@@ -121,6 +121,8 @@ const api = {
   runs: {
     /** Every live browser instance with its own MCP endpoint + token. */
     list: (): Promise<RunInfo[]> => ipcRenderer.invoke("runs:list"),
+    /** Close ONE running instance by run id (siblings stay up). */
+    close: (runId: string): Promise<void> => ipcRenderer.invoke("runs:close", runId),
   },
   system: {
     info: (): Promise<SystemInfo> => ipcRenderer.invoke("system:info"),
