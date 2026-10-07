@@ -57,6 +57,7 @@ interface Props {
   onLaunch: () => Promise<void> | void;
   onStop: () => Promise<void> | void;
   onExport: () => void;
+  onDuplicate: () => void;
   onDelete: () => void;
 }
 
@@ -67,6 +68,7 @@ export function ProfileTile({
   onLaunch,
   onStop,
   onExport,
+  onDuplicate,
   onDelete,
 }: Props): JSX.Element {
   const isRunning = profile.state !== "idle";
@@ -233,7 +235,7 @@ export function ProfileTile({
             {pending ? "Stopping…" : "Stop"}
           </Button>
         )}
-        <ActionMenu onEdit={onOpen} onExport={onExport} onDelete={onDelete} />
+        <ActionMenu onEdit={onOpen} onExport={onExport} onDuplicate={onDuplicate} onDelete={onDelete} />
       </div>
     </div>
   );
@@ -379,10 +381,12 @@ function ContextLine({ profile }: { profile: TileData }): JSX.Element | null {
 function ActionMenu({
   onEdit,
   onExport,
+  onDuplicate,
   onDelete,
 }: {
   onEdit: () => void;
   onExport: () => void;
+  onDuplicate: () => void;
   onDelete: () => void;
 }): JSX.Element {
   const [open, setOpen] = useState(false);
@@ -444,6 +448,9 @@ function ActionMenu({
               </MenuItem>
               <MenuItem onClick={() => { setOpen(false); onExport(); }}>
                 Export archive…
+              </MenuItem>
+              <MenuItem onClick={() => { setOpen(false); onDuplicate(); }}>
+                Duplicate
               </MenuItem>
               <div style={{ height: 1, margin: "4px 0", background: "rgba(255,255,255,0.06)" }} />
               <MenuItem onClick={() => { setOpen(false); onDelete(); }} tone="danger">

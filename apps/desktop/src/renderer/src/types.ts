@@ -72,6 +72,8 @@ export interface MultizenApi {
     delete: (id: ProfileId) => Promise<void>;
     launch: (id: ProfileId) => Promise<LaunchedProfile>;
     close: (id: ProfileId) => Promise<void>;
+    /** Copy a profile (same identity) into a fresh id + dataDir. Refused while running. */
+    duplicate: (id: ProfileId) => Promise<Profile>;
     exportArchive: (
       id: ProfileId,
       passphrase: string,

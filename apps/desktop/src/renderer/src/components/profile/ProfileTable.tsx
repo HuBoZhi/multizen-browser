@@ -10,6 +10,7 @@ interface Props {
   onLaunch: (id: string) => Promise<void> | void;
   onStop: (id: string) => Promise<void> | void;
   onExport: (id: string) => void;
+  onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
@@ -36,6 +37,7 @@ export function ProfileTable({
   onLaunch,
   onStop,
   onExport,
+  onDuplicate,
   onDelete,
 }: Props): JSX.Element {
   return (
@@ -77,6 +79,7 @@ export function ProfileTable({
           onLaunch={() => onLaunch(p.id)}
           onStop={() => onStop(p.id)}
           onExport={() => onExport(p.id)}
+          onDuplicate={() => onDuplicate(p.id)}
           onDelete={() => onDelete(p.id)}
         />
       ))}

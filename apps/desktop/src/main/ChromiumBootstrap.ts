@@ -172,6 +172,15 @@ export class ChromiumBootstrap extends EventEmitter {
   }
 
   /**
+   * The directory all engine state (versions, current.json, install lock)
+   * lives under. Exposed so callers can serialize cross-process installs on
+   * the SAME directory the bootstrap downloads into.
+   */
+  getCacheDir(): string {
+    return this.cacheDir;
+  }
+
+  /**
    * True when the runtime is a locally-provided system binary (dev mode).
    * The engine updater must never touch a dev-system engine — there's no
    * managed download to refresh.

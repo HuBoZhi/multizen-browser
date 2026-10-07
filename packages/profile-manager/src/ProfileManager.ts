@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import { v4 as uuidv4 } from "uuid";
-import { mkdirSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { cpSync, mkdirSync, rmSync } from "node:fs";
+import { basename, join } from "node:path";
 import type {
   Profile,
   ProfileId,
@@ -13,6 +13,27 @@ import type {
   ExtensionConfig,
 } from "@multizen/types";
 import { defaultFingerprint } from "./fingerprint.js";
+
+/**
+ * Directories/files never worth copying when duplicating a profile: pure
+ * Chromium caches (regenerated on first launch) and the stale singleton lock
+ * trio (ownership markers of a possibly-running source, meaningless in a copy).
+ */
+const SKIPPED_ON_DUPLICATE = new Set([
+  "Cache",
+  "Code Cache",
+  "GPUCache",
+  "ShaderCache",
+  "GrShaderCache",
+  "DawnGraphiteCache",
+  "DawnWebGPUCache",
+  "GraphiteDawnCache",
+  "Crashpad",
+  "component_crx_cache",
+  "SingletonLock",
+  "SingletonSocket",
+  "SingletonCookie",
+]);
 
 interface ProfileRow {
   id: string;
@@ -145,6 +166,70 @@ export class ProfileManager {
       dataDir,
       createdAt: now,
       updatedAt: now,
+    };
+
+    this.db
+      .prepare(
+        `INSERT INTO profiles
+         (id, name, notes, tags, proxy, fingerprint, extensions, icon, start_url, search_provider, data_dir, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        profile.id,
+        profile.name,
+        profile.notes ?? null,
+        JSON.stringify(profile.tags),
+        profile.proxy ? JSON.stringify(profile.proxy) : null,
+        JSON.stringify(profile.fingerprint),
+        JSON.stringify(profile.extensions ?? []),
+        profile.icon ?? null,
+        profile.startUrl ?? null,
+        profile.searchProvider ?? null,
+        profile.dataDir,
+        profile.createdAt,
+        profile.updatedAt,
+      );
+
+    return profile;
+  }
+
+  /**
+   * Duplicate a profile into a NEW id + dataDir — the "same identity, another
+   * copy" primitive (multi-instance requirement FR-6 T1). Metadata (fingerprint,
+   * proxy, extensions, icon, start page) is copied verbatim so the copy presents
+   * the SAME identity; only id/name/dataDir/timestamps are fresh. Cookies,
+   * logins and other browser state carry over, so the copy starts where the
+   * source left off and diverges from there.
+   *
+   * Regenerable Chromium cache directories and stale singleton-lock files are
+   * skipped — copying them only wastes disk and time. The SOURCE profile must
+   * NOT be running (Chromium holds a write lock on its user-data-dir while
+   * alive, and SQLite/LevelDB files would be mid-write); the caller enforces.
+   */
+  duplicate(id: ProfileId, name?: string): Profile {
+    const src = this.get(id);
+    if (!src) throw new Error(`Profile ${id} not found`);
+
+    const newId = uuidv4();
+    const dataDir = join(this.profilesRoot, newId);
+    mkdirSync(dataDir, { recursive: true });
+    cpSync(src.dataDir, dataDir, {
+      recursive: true,
+      // Overwrite read-only bits some Chromium state files carry (they break a
+      // naive copy on Windows); skip anything regenerable.
+      force: true,
+      filter: (p) => !SKIPPED_ON_DUPLICATE.has(basename(p)),
+    });
+
+    const now = new Date().toISOString();
+    const profile: Profile = {
+      ...src,
+      id: newId,
+      name: name ?? `${src.name} (copy)`,
+      dataDir,
+      createdAt: now,
+      updatedAt: now,
+      lastOpenedAt: undefined,
     };
 
     this.db

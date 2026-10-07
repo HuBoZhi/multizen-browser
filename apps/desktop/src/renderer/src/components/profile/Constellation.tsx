@@ -40,6 +40,7 @@ interface Props {
   onLaunch: (id: string) => void;
   onStop: (id: string) => void;
   onExport: (id: string) => void;
+  onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
@@ -52,6 +53,7 @@ export function Constellation({
   onLaunch,
   onStop,
   onExport,
+  onDuplicate,
   onDelete,
 }: Props): JSX.Element {
   const [filter, setFilter] = useState<FilterChip["id"]>("all");
@@ -227,6 +229,7 @@ export function Constellation({
             onLaunch={onLaunch}
             onStop={onStop}
             onExport={onExport}
+            onDuplicate={onDuplicate}
             onDelete={onDelete}
           />
         ) : (
@@ -245,6 +248,7 @@ export function Constellation({
                 onLaunch={() => onLaunch(p.id)}
                 onStop={() => onStop(p.id)}
                 onExport={() => onExport(p.id)}
+                onDuplicate={() => onDuplicate(p.id)}
                 onDelete={() => onDelete(p.id)}
               />
             ))}

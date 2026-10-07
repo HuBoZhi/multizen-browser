@@ -34,6 +34,7 @@ interface Props {
   onLaunch: () => Promise<void> | void;
   onStop: () => Promise<void> | void;
   onExport: () => void;
+  onDuplicate: () => void;
   onDelete: () => void;
 }
 
@@ -45,6 +46,7 @@ export function ProfileRow({
   onLaunch,
   onStop,
   onExport,
+  onDuplicate,
   onDelete,
 }: Props): JSX.Element {
   const isRunning = profile.state !== "idle";
@@ -196,7 +198,7 @@ export function ProfileRow({
             {pending ? "…" : "Stop"}
           </Button>
         )}
-        <RowMenu onEdit={onOpen} onExport={onExport} onDelete={onDelete} />
+        <RowMenu onEdit={onOpen} onExport={onExport} onDuplicate={onDuplicate} onDelete={onDelete} />
       </div>
     </div>
   );
@@ -298,10 +300,12 @@ function RowProxyHealth({ profile }: { profile: TileData }): JSX.Element {
 function RowMenu({
   onEdit,
   onExport,
+  onDuplicate,
   onDelete,
 }: {
   onEdit: () => void;
   onExport: () => void;
+  onDuplicate: () => void;
   onDelete: () => void;
 }): JSX.Element {
   const [open, setOpen] = useState(false);
@@ -365,6 +369,9 @@ function RowMenu({
               </MenuItem>
               <MenuItem onClick={() => { setOpen(false); onExport(); }}>
                 Export archive…
+              </MenuItem>
+              <MenuItem onClick={() => { setOpen(false); onDuplicate(); }}>
+                Duplicate
               </MenuItem>
               <div style={{ height: 1, margin: "4px 0", background: "rgba(255,255,255,0.06)" }} />
               <MenuItem onClick={() => { setOpen(false); onDelete(); }} tone="danger">

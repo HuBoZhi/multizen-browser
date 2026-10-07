@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 import type { AppSettings } from "@multizen/settings-store";
 import type { EngineUpdateStatus } from "@multizen/types";
 import type { ChromiumBootstrap } from "./ChromiumBootstrap.ts";
+import { withEngineInstallLock } from "./engineInstallLock.ts";
 
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6h
 const POST_LAUNCH_DELAY_MS = 10_000; // let first-run + window settle first
@@ -153,8 +154,13 @@ export class EngineUpdateService extends EventEmitter {
       }
       this.set({ kind: "available", version, current });
       if (download) {
-        const staged = await this.bootstrap.stageVersion(manifest, (bytesReceived, bytesTotal) =>
-          this.set({ kind: "downloading", version, bytesReceived, bytesTotal }),
+        // FR-3: the engine cache is SHARED across instances — serialize the
+        // staging download with the same cross-process lock the cold-start
+        // ensure() uses, so two instances never pull the same update twice.
+        const staged = await withEngineInstallLock(this.bootstrap.getCacheDir(), () =>
+          this.bootstrap.stageVersion(manifest, (bytesReceived, bytesTotal) =>
+            this.set({ kind: "downloading", version, bytesReceived, bytesTotal }),
+          ),
         );
         this.set({ kind: "staged", version: staged });
       }

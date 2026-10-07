@@ -41,7 +41,9 @@ import {
   readManifestIcon,
 } from "./extensions/extensionStore.ts";
 import { probeProxyGeo, type ProxyGeoResult } from "./proxyGeo.ts";
-import { initInstanceConfig, resolveMcpPort } from "./instanceConfig.ts";
+import { initInstanceConfig, resolveMcpPort, sharedEngineRoot } from "./instanceConfig.ts";
+import { withEngineInstallLock } from "./engineInstallLock.ts";
+import { clampWindowState, type WindowState } from "./windowState.ts";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
@@ -101,9 +103,24 @@ let cachedSettings: AppSettings | null = null;
 
 function createWindow(): void {
   const iconPath = resolveAppIcon();
+  // FR-9b: restore the last geometry, clamped into a visible work area (a
+  // position persisted on a since-unplugged monitor must not strand the
+  // window off-screen). First run (nothing persisted) → default size,
+  // maximized (FR-9a).
+  const savedBounds = cachedSettings?.windowBounds;
+  const restore: WindowState | null = savedBounds
+    ? clampWindowState({
+        x: savedBounds.x,
+        y: savedBounds.y,
+        width: savedBounds.width,
+        height: savedBounds.height,
+        maximized: cachedSettings?.windowMaximized ?? true,
+      })
+    : null;
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    ...(restore
+      ? { x: restore.x, y: restore.y, width: restore.width, height: restore.height }
+      : { width: 1280, height: 800 }),
     minWidth: 900,
     minHeight: 600,
     // Hidden until first paint + maximize, so the window never flashes at
@@ -127,10 +144,28 @@ function createWindow(): void {
   }
 
   // Open maximized by default. maximize() while still hidden, then reveal —
-  // the user's first frame is already the maximized window.
+  // the user's first frame is already the maximized window. When a NON-
+  // maximized geometry was restored, just reveal at that size.
   mainWindow.once("ready-to-show", () => {
-    mainWindow?.maximize();
+    if (restore === null || restore.maximized) mainWindow?.maximize();
     mainWindow?.show();
+  });
+
+  // FR-9b: persist geometry on close — normal (non-maximized) bounds + the
+  // maximized flag — through settingsStore.update(), whose internal cache is
+  // file-truth, so a CLI --mcp-port override living only in the local
+  // cachedSettings copy can never leak into settings.json here.
+  mainWindow.on("close", () => {
+    const win = mainWindow;
+    if (!win || win.isDestroyed() || !settingsStore) return;
+    try {
+      const normal = win.getNormalBounds();
+      void settingsStore
+        .update({ windowBounds: normal, windowMaximized: win.isMaximized() })
+        .catch(() => {});
+    } catch {
+      // best-effort — a teardown race is never worth failing on
+    }
   });
 
   mainWindow.webContents.on("did-fail-load", (_e, code, description, url) => {
@@ -150,10 +185,39 @@ app.setAboutPanelOptions({
 });
 
 // Multi-instance config (FR-1): parse --instance-id / --data-dir / --mcp-port /
-// --launch-profile and redirect userData BEFORE anything reads it — setName
-// above first (it feeds the default %APPDATA%/MultiZen path), then setPath.
-// With no instance flags this is a no-op and behavior is exactly upstream.
+// --launch-profile / --import-profile and redirect userData BEFORE anything
+// reads it — setName above first (it feeds the default %APPDATA%/MultiZen
+// path), then setPath. With no instance flags this is a no-op and behavior is
+// exactly upstream.
 const instance = initInstanceConfig(process.argv);
+
+// FR-4: per-instance single-instance lock. Electron keys the OS lock on the
+// userData path, so AFTER the setPath above this naturally means: same
+// instance-id twice → second launch refused; different ids → no interference.
+// Deliberately NOT applied to flag-less launches — upstream has no lock, and
+// adding one would change official default behavior.
+if (instance.instanceId !== null || instance.dataDir !== null) {
+  if (!app.requestSingleInstanceLock()) {
+    const label = instance.instanceId ?? instance.dataDir!;
+    process.stderr.write(`[multizen] another MultiZen instance "${label}" is already running\n`);
+    dialog.showErrorBox(
+      "MultiZen — instance already running",
+      `An instance ${instance.instanceId !== null ? `with --instance-id=${instance.instanceId} ` : ""}on this data directory is already running.\n\n` +
+        `Focus the existing window instead of launching a duplicate.`,
+    );
+    app.exit(1);
+    throw new Error(`instance "${label}" already running`);
+  }
+  // The lock holder learns about the duplicate attempt — bring the existing
+  // window forward so the user isn't left wondering why nothing happened.
+  app.on("second-instance", () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
 
 app.whenReady().then(async () => {
   // macOS: explicitly set the dock icon. In packaged .app bundles macOS
@@ -205,15 +269,35 @@ app.whenReady().then(async () => {
   // Chromium bootstrap — picks the engine from user settings (CFT default,
   // CloakBrowser opt-in for stronger anti-detect), downloads it on first
   // run, and reports progress to the renderer.
+  // FR-3: when instance flags are active, the engine cache moves OUT of the
+  // per-instance userData into a SHARED runtime root, so N instances share
+  // one ~560 MB download instead of N. Flag-less launches keep upstream's
+  // userData/chromium location untouched.
+  const engineSharedRoot = sharedEngineRoot(instance);
+  const engineCacheDir =
+    engineSharedRoot !== null
+      ? join(engineSharedRoot, "runtime", "chromium", cachedSettings.browserEngine)
+      : null;
+  process.stdout.write(
+    `[multizen] engine cache=${engineCacheDir ?? `${join(userData, "chromium", cachedSettings.browserEngine)} (per-instance default)`}\n`,
+  );
   chromiumBootstrap = new ChromiumBootstrap({
     engine: cachedSettings.browserEngine,
+    ...(engineCacheDir !== null ? { cacheDir: engineCacheDir } : {}),
   });
   chromiumBootstrap.on("status", (status: ChromiumStatus) => {
     sendToRenderer("chromium:status", status);
   });
   // Kick off the ensure() in the background so the UI can render immediately
   // and show download progress. Profile launches will wait until ready.
-  void chromiumBootstrap.ensure().catch((e) => {
+  // FR-3: under a shared cache dir, the (potentially 560 MB) first download
+  // is serialized across instances with a cross-process install lock — a
+  // second instance cold-starting alongside waits here, then hits the cache.
+  const ensureEngine = (): Promise<unknown> =>
+    engineCacheDir !== null
+      ? withEngineInstallLock(engineCacheDir, () => chromiumBootstrap.ensure())
+      : chromiumBootstrap.ensure();
+  void ensureEngine().catch((e) => {
     process.stderr.write(`Chromium bootstrap failed: ${String(e)}\n`);
   });
 
@@ -375,6 +459,46 @@ app.whenReady().then(async () => {
     }
   }
 
+  // FR-6 T1: --import-profile=<file.mzar> + --import-passphrase=<pp> — bring a
+  // profile archive into THIS instance at startup. Combines with
+  // --launch-profile for scripted "import & run" launches of the same
+  // identity across instances. Archives are always encrypted, so a missing
+  // passphrase is a loud failure, not a prompt mid-script. Note: the
+  // passphrase is visible in process listings — acceptable for local
+  // orchestration tooling, documented in the requirements doc.
+  if (instance.importProfile) {
+    const archivePath = resolve(instance.importProfile);
+    function fail(msg: string): never {
+      process.stderr.write(`[multizen] --import-profile: ${msg}\n`);
+      dialog.showErrorBox("MultiZen — profile import failed", `${msg}`);
+      app.exit(1);
+      throw new Error(msg);
+    }
+    if (!existsSync(archivePath)) {
+      fail(`archive not found: ${archivePath}`);
+    }
+    if (!instance.importPassphrase) {
+      fail("--import-passphrase is required — .mzar archives are always encrypted.");
+    }
+    try {
+      const restored = await importProfile(
+        archivePath,
+        instance.importPassphrase,
+        join(dataRoot, "profiles"),
+        {
+          idTaken: (id) => Boolean(profileManager.get(id)),
+          extensionStoreRoot,
+        },
+      );
+      const inserted = profileManager.insertImported(restored);
+      process.stdout.write(
+        `[multizen] --import-profile: imported "${inserted.name}" (${inserted.id})\n`,
+      );
+    } catch (e) {
+      fail(`importing ${archivePath} failed: ${String(e)}`);
+    }
+  }
+
   // FR-8: --launch-profile=<id|name> — auto-launch the profile once settings,
   // driver and MCP transport are wired, so a scripted instance comes up
   // ready-to-drive with zero GUI interaction. browserDriver.launch() waits for
@@ -431,11 +555,30 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle("profiles:launch", (_e, id: string) => browserDriver.launch(id));
   ipcMain.handle("profiles:close", (_e, id: string) => browserDriver.close(id));
+  // FR-6 T1: duplicate into a fresh id + dataDir. Refused while the source is
+  // RUNNING — Chromium holds a write lock on its user-data-dir and mid-write
+  // SQLite/LevelDB files would produce a corrupt copy.
+  ipcMain.handle("profiles:duplicate", (_e, id: string) => {
+    if (browserDriver.isRunning(id)) {
+      throw new Error(
+        `Profile is running — stop it before duplicating. ` +
+          `Chromium keeps its profile files open and mid-write while alive; ` +
+          `a copy taken now could be corrupt.`,
+      );
+    }
+    return profileManager.duplicate(id);
+  });
 
   // Settings IPC
   ipcMain.handle("settings:get", () => settingsStore.load());
   ipcMain.handle("settings:update", async (_e, patch: Partial<AppSettings>) => {
     cachedSettings = await settingsStore.update(patch);
+    // The update returns FILE truth; a CLI/env --mcp-port override outranks
+    // the file for this process's lifetime — re-apply it so system:info and
+    // the MCP panel keep showing the port the transport actually bound.
+    if (mcpPort.source === "cli" || mcpPort.source === "env") {
+      cachedSettings = { ...cachedSettings, mcpHttpPort: mcpPort.port };
+    }
     // Let the updaters react to their auto-update toggles without a restart.
     updater?.onSettingsChanged();
     engineUpdater?.onSettingsChanged();
@@ -447,7 +590,11 @@ app.whenReady().then(async () => {
 
   // Chromium bootstrap IPC
   ipcMain.handle("chromium:status", () => chromiumBootstrap.getStatus());
-  ipcMain.handle("chromium:retry", () => chromiumBootstrap.ensure());
+  ipcMain.handle("chromium:retry", () =>
+    engineCacheDir !== null
+      ? withEngineInstallLock(engineCacheDir, () => chromiumBootstrap.ensure())
+      : chromiumBootstrap.ensure(),
+  );
 
   // Extensions IPC (per-profile)
   ipcMain.handle("extensions:list", (_e, profileId: string) =>

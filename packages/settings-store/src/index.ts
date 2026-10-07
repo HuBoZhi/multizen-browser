@@ -44,6 +44,15 @@ export interface AppSettings {
    * env var force-disables it regardless. See docs/TELEMETRY.md.
    */
   usageReporting: boolean;
+  /**
+   * Last main-window geometry in its NORMAL (non-maximized) state, written by
+   * the main process on window close and restored (clamped into a visible
+   * work area) on the next launch. Absent on first run. Written only by the
+   * main process; the GUI never edits it.
+   */
+  windowBounds?: { x: number; y: number; width: number; height: number };
+  /** Whether the window was maximized when last closed. Absent = first run. */
+  windowMaximized?: boolean;
 }
 
 const DEFAULTS: AppSettings = {
@@ -94,6 +103,14 @@ export class SettingsStore {
     if (typeof merged.usageReporting !== "boolean") {
       merged.usageReporting = DEFAULTS.usageReporting;
     }
+    if (!isFiniteRect(merged.windowBounds)) {
+      // Garbage geometry (hand-edited file, partial write) — drop rather than
+      // restore a window at NaN,NaN.
+      merged.windowBounds = undefined;
+    }
+    if (typeof merged.windowMaximized !== "boolean") {
+      merged.windowMaximized = undefined;
+    }
     this.cache = merged;
     return merged;
   }
@@ -109,4 +126,14 @@ export class SettingsStore {
 
 export function defaultSettingsPath(userDataDir: string): string {
   return join(userDataDir, "settings.json");
+}
+
+/** True when b is a plain rectangle of four finite numbers. */
+function isFiniteRect(
+  b: { x: number; y: number; width: number; height: number } | undefined,
+): b is { x: number; y: number; width: number; height: number } {
+  return (
+    b !== undefined &&
+    [b.x, b.y, b.width, b.height].every((n) => typeof n === "number" && Number.isFinite(n))
+  );
 }

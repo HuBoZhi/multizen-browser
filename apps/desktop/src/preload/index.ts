@@ -78,6 +78,7 @@ const api = {
     launch: (id: ProfileId): Promise<LaunchedProfile> =>
       ipcRenderer.invoke("profiles:launch", id),
     close: (id: ProfileId): Promise<void> => ipcRenderer.invoke("profiles:close", id),
+    duplicate: (id: ProfileId): Promise<Profile> => ipcRenderer.invoke("profiles:duplicate", id),
     exportArchive: (
       id: ProfileId,
       passphrase: string,
