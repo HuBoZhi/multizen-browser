@@ -1,5 +1,12 @@
 export { ProfileManager, copyProfileData } from "./ProfileManager.js";
 export {
+  captureCookieBaseline,
+  syncRunIntoProfile,
+  copyBackRunTree,
+  type CookieBaseline,
+  type SyncRunOptions,
+} from "./sync.js";
+export {
   defaultFingerprint,
   generateFingerprint,
   reconcileFingerprint,

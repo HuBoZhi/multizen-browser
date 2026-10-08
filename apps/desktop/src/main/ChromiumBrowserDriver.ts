@@ -13,7 +13,13 @@ import { promisify } from "node:util";
 const execFileP = promisify(execFile);
 import { HttpTransport, type BrowserDriver, type RunServerFactory } from "@multizen/mcp-server";
 import type { ProfileManager } from "@multizen/profile-manager";
-import { copyProfileData, reconcileDeviceFamilyToHost } from "@multizen/profile-manager";
+import {
+  captureCookieBaseline,
+  copyProfileData,
+  reconcileDeviceFamilyToHost,
+  syncRunIntoProfile,
+  type CookieBaseline,
+} from "@multizen/profile-manager";
 import type {
   ClientHints,
   FingerprintConfig,
@@ -44,9 +50,21 @@ interface RunningProcess {
   /** The engine's `--user-data-dir`. Used to sweep any lingering browser
    *  process that still holds this profile's data dir on shutdown. */
   browserDataDir: string;
-  /** Ephemeral-run working copy this browser runs against (FR-6 T2). Deleted
-   *  when the browser exits; absent when running on the profile's own data. */
-  ephemeralRunDir?: string;
+  /** Private working copy this browser ran against (FR-6 T2). Always set —
+   *  every run materializes one from the profile dir — and deleted after
+   *  the run's identity changes have been merged back (unless the profile
+   *  is ephemeral). */
+  workingCopyDir: string;
+  /** The profile's own data root + its engine-scoped browser data dir —
+   *  the sync-back targets on exit. */
+  profileDataDir: string;
+  profileBrowserDataDir: string;
+  /** Cookie PKs + last_access stamps as the run started; lets the exit
+   *  merge propagate logouts without resurrecting sibling-refreshed rows. */
+  cookieBaseline: CookieBaseline;
+  /** Merge identity changes back on exit? false for ephemeral profiles —
+   *  their copies are purely disposable. */
+  syncBack: boolean;
   /** Per-run MCP control endpoint (run-scoped tools, own port + token).
    *  Null when no run-server factory was wired or the listen failed. */
   mcpTransport: HttpTransport | null;
@@ -126,6 +144,58 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
     this.extensionStoreRoot = opts.extensionStoreRoot;
     this.runsRoot = opts.runsRoot;
     this.createRunServer = opts.createRunServer;
+    // Recover run dirs orphaned by a previous host crash: their browsers
+    // are long gone, so the files are unlocked — merge whatever identity
+    // state never got synced, then delete. A dir that can't be synced (its
+    // browser somehow still alive and holding locks) is kept for the next
+    // startup instead of destroying unsynced cookies.
+    void this.recoverOrphanRunDirs();
+  }
+
+  /**
+   * Startup sweep of `<runsRoot>`: re-run the exit sync for every leftover
+   * working copy, oldest first (a profile's newest orphan wins the wholesale
+   * copy-back, exactly like live last-run exits).
+   */
+  private async recoverOrphanRunDirs(): Promise<void> {
+    const entries = await fsp
+      .readdir(this.runsRoot, { withFileTypes: true })
+      .catch(() => []);
+    const orphans = entries
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name)
+      .sort(); // trailing ms-timestamp suffix makes lexical = chronological
+    for (const name of orphans) {
+      const runDir = join(this.runsRoot, name);
+      const profileId = profileIdFromRunDirName(name);
+      const profile = profileId ? this.profileManager.get(profileId) : undefined;
+      if (!profile) {
+        await fsp.rm(runDir, { recursive: true, force: true }).catch(() => {});
+        continue;
+      }
+      const engine = this.bootstrap.getEngine();
+      try {
+        await syncRunIntoProfile({
+          runDir,
+          profileDir: profile.dataDir,
+          runDataDir: browserDataDirForEngine(runDir, engine),
+          profileDataDir: browserDataDirForEngine(profile.dataDir, engine),
+          // Baseline unknown after a host restart — cookie deletions from
+          // the crashed run can't be told apart from sibling refreshes, so
+          // only merges/upserts are applied.
+          baseline: undefined,
+          syncBack: !profile.ephemeral,
+          isLastRun: true,
+        });
+        await fsp.rm(runDir, { recursive: true, force: true });
+        console.log(`[multizen] recovered orphan run dir: ${name}`);
+      } catch (e) {
+        console.warn(
+          `[multizen] orphan run dir kept for next startup (${name}):`,
+          (e as Error).message,
+        );
+      }
+    }
   }
 
   override on<K extends keyof DriverEvents>(event: K, listener: DriverEvents[K]): this {
@@ -156,24 +226,23 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
     const port = await this.allocatePort();
     const chromiumPath = this.bootstrap.resolveBinaryPath();
     const engine: BrowserEngine = this.bootstrap.getEngine();
-    // Working-copy policy (FR-6 T2, "first run persistent, later runs ephemeral"):
-    //  - profiles flagged ephemeral: EVERY run is a disposable copy (template
-    //    is a read-only identity, always safe to parallelize);
-    //  - normal profiles: the FIRST run executes on the profile's own data
-    //    (cookies persist across sessions, unchanged behavior), and any
-    //    ADDITIONAL concurrent run gets a fresh disposable copy — Chromium's
-    //    SingletonLock forbids two processes on one data dir anyway.
-    const existingRuns = [...this.running.values()].filter((r) => r.profileId === profileId);
-    const runOnCopy = profile.ephemeral || existingRuns.length > 0;
-    let ephemeralRunDir: string | undefined;
-    if (runOnCopy) {
-      ephemeralRunDir = join(this.runsRoot, runId);
-      copyProfileData(profile.dataDir, ephemeralRunDir);
-    }
-    const browserDataDir = browserDataDirForEngine(
-      ephemeralRunDir ?? profile.dataDir,
-      engine,
-    );
+    // Working-copy policy (FR-6 T2, revised): EVERY run — including the
+    // first — executes on a private working copy materialized from the
+    // profile dir. The profile dir ("main repo") is thereafter written only
+    // by the host process and never held open by a live browser, which kills
+    // the Windows file-lock problem at the root: a live Chromium opens its
+    // Cookies DB without read-sharing, so when the first run used to live
+    // directly on the profile dir, every sibling's copy silently lost the
+    // Cookies file and booted logged-out (ChatGPT et al.). Identity changes
+    // flow back through syncRunIntoProfile() once the browser has exited;
+    // profiles flagged ephemeral skip that merge and stay purely disposable.
+    const workingCopyDir = join(this.runsRoot, runId);
+    copyProfileData(profile.dataDir, workingCopyDir);
+    const browserDataDir = browserDataDirForEngine(workingCopyDir, engine);
+    const profileBrowserDataDir = browserDataDirForEngine(profile.dataDir, engine);
+    // Snapshot the cookie PKs the run starts from — the exit merge needs it
+    // to tell "the run logged out" apart from "a sibling refreshed this row".
+    const cookieBaseline = captureCookieBaseline(browserDataDir);
     // Read the actual Chromium binary's version and reconcile the
     // profile's spoofed UA against it. Detection vendors fingerprint the
     // JS engine and compare against the claimed UA — claiming Chrome
@@ -790,7 +859,11 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
       startedAt,
       session,
       browserDataDir,
-      ephemeralRunDir,
+      workingCopyDir,
+      profileDataDir: profile.dataDir,
+      profileBrowserDataDir,
+      cookieBaseline,
+      syncBack: !profile.ephemeral,
       mcpTransport,
       mcpPort,
       mcpToken,
@@ -806,14 +879,30 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
       void stopBridgeForProfile(profileId).catch(() => {});
       if (record.mcpTransport) void record.mcpTransport.stop().catch(() => {});
       this.running.delete(runId);
-      if (record.ephemeralRunDir) {
-        // FR-6 T2: the working copy dies with the browser — the profile's
-        // own dir is the only persistent truth. Delayed a beat because dying
-        // Chromium helpers on Windows release their file handles lazily.
-        const runDir = record.ephemeralRunDir;
-        setTimeout(() => {
-          void fsp.rm(runDir, { recursive: true, force: true }).catch(() => {});
-        }, 3000);
+      if (record.workingCopyDir) {
+        // The browser is dead, so its file handles are released: merge this
+        // run's identity changes into the profile dir FIRST, then dispose of
+        // the working copy. It is never a source of truth — any run dir that
+        // can't be synced still gets deleted (crash losses are covered by
+        // recoverOrphanRunDirs() on the next startup).
+        const remaining = [...this.running.values()].filter((r) => r.profileId === profileId)
+          .length;
+        void syncRunIntoProfile({
+          runDir: record.workingCopyDir,
+          profileDir: record.profileDataDir,
+          runDataDir: record.browserDataDir,
+          profileDataDir: record.profileBrowserDataDir,
+          baseline: record.cookieBaseline,
+          syncBack: record.syncBack,
+          isLastRun: remaining === 0,
+        }).finally(() => {
+          const copyDir = record.workingCopyDir;
+          // A beat after the sync so Chromium helpers that outlive the main
+          // process release their handles before the recursive delete.
+          setTimeout(() => {
+            void fsp.rm(copyDir, { recursive: true, force: true }).catch(() => {});
+          }, 1500);
+        });
       }
       if (wasTracked) {
         // closeRun() removes from the map first so wasTracked is false there;
@@ -862,7 +951,10 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
         mcpEndpoint:
           r.mcpPort !== null ? `http://127.0.0.1:${r.mcpPort}` : "(unavailable)",
         mcpToken: r.mcpToken ?? "",
-        ephemeral: r.ephemeralRunDir !== undefined,
+        // "Ephemeral" as the GUI means it: the run's identity changes are
+        // NOT merged back (profile flagged ephemeral) — every run executes
+        // on a working copy either way.
+        ephemeral: !r.syncBack,
       }));
   }
 
@@ -1295,6 +1387,13 @@ function browserDataDirForEngine(profileDataDir: string, engine: BrowserEngine):
     return join(profileDataDir, "engines", "cloakbrowser");
   }
   return profileDataDir;
+}
+
+/** Run dirs are named `<profileId>-<Date.now()>`; peel the id back off for
+ *  the startup orphan recovery. Null when the name doesn't match (→ sweep). */
+function profileIdFromRunDirName(name: string): string | null {
+  const m = name.match(/^(.+)-(\d{13})$/);
+  return m?.[1] ?? null;
 }
 
 /**

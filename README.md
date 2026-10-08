@@ -115,7 +115,7 @@ Each profile is a real Chromium window with persistent state on disk. The MCP se
 | **Anti-detect Chromium** | Source-patched browser engine (CloakBrowser). Canvas, WebGL, audio, fonts, WebRTC IP all spoofed at C++ level instead of JS injection. |
 | **Persistent state** | Cookies, login, IndexedDB, localStorage stay per-profile across launches and across AI sessions. |
 | **Parallel agents** | Run several named app instances (`--instance-id`) with isolated data, or several browsers of one profile. Every live browser run exposes its own MCP endpoint (port + token) for a dedicated agent. |
-| **Ephemeral profiles** | Flag a profile as ephemeral: each launch materializes a disposable working copy (identity and cookies copied, caches skipped) that is deleted on close — the template stays pristine. |
+| **Ephemeral profiles** | Flag a profile as ephemeral: each launch materializes a disposable working copy (identity and cookies copied, caches skipped) that is deleted on close without ever writing back — the template stays pristine. |
 | **Fresh launches** | Every browser opens exactly one tab: the profile's start page. No tab restore between runs; logins and storage persist as always. |
 | **Cross-platform persona** | Run a Windows persona on a Mac host (or vice versa). C++ patches keep the fingerprint coherent across V8, Blink, and CSS feature signatures. |
 | **Proxy + persona alignment** | Per-profile HTTP or SOCKS5 proxy with a local SOCKS5 bridge so DNS resolution stays remote. Auto-aligns timezone, locale, and `navigator.geolocation` to the proxy egress IP. |
@@ -203,7 +203,9 @@ MultiZen.exe --instance-id=B --mcp-port=12002 --data-dir="D:\MultiZenData" --lau
 
 ### Several browsers per profile (runs)
 
-A profile card's **New instance** button (or launching an already-running profile) starts another browser of the same profile. The first run uses the profile's persistent data; each additional run gets a throwaway working copy, so parallel runs never touch the original.
+A profile card's **New instance** button (or launching an already-running profile) starts another browser of the same profile.
+
+Every run — including the first — executes on a private **working copy** of the profile's data, so parallel runs never touch the original and a live browser can never hold the profile dir locked. When a run's browser exits, its identity changes are merged back into the profile dir: cookies merge row-level (so sibling runs converge and logouts propagate), and the last run to exit also carries back the other identity stores (Local Storage, IndexedDB, passwords, preferences, extensions). If the app itself dies mid-run, the leftover working copy is detected and merged on the next startup.
 
 Every live run has its **own MCP endpoint** — its own port and bearer token:
 
@@ -214,7 +216,7 @@ Every live run has its **own MCP endpoint** — its own port and bearer token:
 
 ### Ephemeral profiles
 
-Mark a profile **Ephemeral** in its editor (or `update_profile` with `ephemeral: true`): every launch materializes a fresh working copy from the template — identity, cookies, and fingerprint included — and the copy is deleted when the browser closes. Good for parallel one-shot tasks where the template must stay pristine.
+Mark a profile **Ephemeral** in its editor (or `update_profile` with `ephemeral: true`): every launch materializes a fresh working copy from the template — identity, cookies, and fingerprint included — and the copy is deleted when the browser closes **without syncing anything back**. Good for parallel one-shot tasks where the template must stay pristine. (Normal profiles run on working copies too, but merge their changes back on exit.)
 
 ### Fresh launches
 

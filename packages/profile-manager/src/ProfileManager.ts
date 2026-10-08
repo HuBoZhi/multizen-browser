@@ -18,8 +18,9 @@ import { defaultFingerprint } from "./fingerprint.js";
  * Directories/files never worth copying when duplicating a profile: pure
  * Chromium caches (regenerated on first launch) and the stale singleton lock
  * trio (ownership markers of a possibly-running source, meaningless in a copy).
+ * Exported because the run→profile sync-back (sync.ts) skips the same set.
  */
-const SKIPPED_ON_DUPLICATE = new Set([
+export const SKIPPED_ON_DUPLICATE = new Set([
   "Cache",
   "Code Cache",
   "GPUCache",
