@@ -1,6 +1,5 @@
 import type { JSX } from "react";
 import { Boxes } from "lucide-react";
-import { Kbd } from "../atoms";
 import { useI18n } from "../../lib/i18n";
 
 interface Props {
@@ -39,7 +38,7 @@ export function ProfilesEmptyState({ onCreate }: Props): JSX.Element {
         <div className="text-[12px] text-neutral-400 mt-1.5 leading-relaxed">
           {t("Each profile is its own browser — cookies, login, fingerprint, proxy. Create one to get started.")}
         </div>
-        <div className="flex items-center justify-center gap-2 mt-4">
+        <div className="flex items-center justify-center mt-4">
           <button
             type="button"
             onClick={onCreate}
@@ -47,7 +46,6 @@ export function ProfilesEmptyState({ onCreate }: Props): JSX.Element {
           >
             {t("New profile")}
           </button>
-          <Kbd>⌘ N</Kbd>
         </div>
       </div>
     </div>

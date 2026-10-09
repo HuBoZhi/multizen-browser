@@ -38,6 +38,11 @@ export class MockBrowserDriver implements BrowserDriver {
     }
   }
 
+  async settleProfile(profileId: ProfileId): Promise<void> {
+    // Mock runs have no on-disk sync-back — closing IS settling.
+    await this.close(profileId);
+  }
+
   async closeRun(runId: string): Promise<void> {
     this.running.delete(runId);
   }

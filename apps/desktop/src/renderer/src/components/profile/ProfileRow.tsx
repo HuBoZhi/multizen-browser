@@ -34,6 +34,8 @@ interface Props {
   runs?: RunInfo[];
   /** Chromium winding down (window closed / Stop) but not yet exited. */
   terminating?: boolean;
+  /** Browser exited; this run's identity is still merging into the profile dir. */
+  syncing?: boolean;
   onOpen: () => void;
   onLaunch: () => Promise<void> | void;
   /** Launch ONE MORE instance (run 2+ executes on a disposable copy). */
@@ -49,6 +51,7 @@ export function ProfileRow({
   profile,
   runs,
   terminating = false,
+  syncing = false,
   onOpen,
   onLaunch,
   onNewInstance,
@@ -190,7 +193,17 @@ export function ProfileRow({
           isRunning || terminating ? "opacity-100" : "opacity-0 group-hover:opacity-100",
         )}
       >
-        {showTerminating ? (
+        {syncing && liveRuns.length === 0 ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled
+            title={t("Merging this run's identity back into the profile…")}
+            leftIcon={<Loader2 size={9} className="animate-spin" />}
+          >
+            {t("Saving…")}
+          </Button>
+        ) : showTerminating ? (
           <Button
             variant="secondary"
             size="sm"
@@ -241,7 +254,13 @@ export function ProfileRow({
             </Button>
           </>
         )}
-        <RowMenu onEdit={onOpen} onExport={onExport} onDuplicate={onDuplicate} onDelete={onDelete} />
+        <RowMenu
+          onEdit={onOpen}
+          onExport={onExport}
+          onDuplicate={onDuplicate}
+          duplicateDisabled={isRunning || terminating}
+          onDelete={onDelete}
+        />
       </div>
     </div>
   );
@@ -353,11 +372,14 @@ function RowMenu({
   onEdit,
   onExport,
   onDuplicate,
+  duplicateDisabled,
   onDelete,
 }: {
   onEdit: () => void;
   onExport: () => void;
   onDuplicate: () => void;
+  /** Source profile running/winding down — its files are locked, a copy now could be corrupt. */
+  duplicateDisabled?: boolean;
   onDelete: () => void;
 }): JSX.Element {
   const { t } = useI18n();
@@ -429,7 +451,9 @@ function RowMenu({
               <MenuItem onClick={() => { setOpen(false); onExport(); }}>
                 {t("Export archive…")}
               </MenuItem>
-              <MenuItem onClick={() => { setOpen(false); onDuplicate(); }}>
+              <MenuItem onClick={() => { setOpen(false); onDuplicate(); }} disabled={duplicateDisabled}
+                title={duplicateDisabled ? t("Profile is running — stop it before duplicating") : undefined}
+              >
                 {t("Duplicate")}
               </MenuItem>
               <div style={{ height: 1, margin: "4px 0", background: "rgba(255,255,255,0.06)" }} />
@@ -448,14 +472,21 @@ function MenuItem({
   children,
   onClick,
   tone,
+  disabled,
+  title,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   tone?: "danger";
+  /** Greyed out, no hover, no click (kept visible so the affordance stays discoverable). */
+  disabled?: boolean;
+  title?: string;
 }): JSX.Element {
   return (
     <button
       type="button"
+      disabled={disabled}
+      title={title}
       onClick={(e) => {
         // Stop the click bubbling (through the portal, up the React tree) to the
         // row's onClick={onOpen}, which would otherwise open Edit Profile on top
@@ -465,8 +496,12 @@ function MenuItem({
         onClick();
       }}
       className={cn(
-        "w-full text-left px-3 py-1.5 text-[12px] cursor-pointer transition-colors hover:bg-white/[0.05]",
-        tone === "danger" ? "text-red-400" : "text-neutral-200",
+        "w-full text-left px-3 py-1.5 text-[12px] transition-colors",
+        disabled
+          ? "text-neutral-500 cursor-default"
+          : tone === "danger"
+            ? "text-red-400 cursor-pointer hover:bg-white/[0.05]"
+            : "text-neutral-200 cursor-pointer hover:bg-white/[0.05]",
       )}
     >
       {children}

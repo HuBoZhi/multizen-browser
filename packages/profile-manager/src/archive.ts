@@ -1,5 +1,5 @@
 import { createReadStream, createWriteStream, existsSync, statSync } from "node:fs";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative, resolve, sep } from "node:path";
 import {
   createHash,
@@ -77,13 +77,16 @@ export async function exportProfile(
   outPath: string,
   opts: ExportOptions = {},
 ): Promise<void> {
+  // Metadata pass (hashes stream — file CONTENT is streamed below, never
+  // buffered whole). A profile dir can be gigabytes; the previous
+  // whole-plaintext-in-RAM layout peaked at ~3x the profile size.
   const files = await collectFiles(profile.dataDir);
 
-  // Collect bundled extensions (v2). Each extension's files are appended after
-  // the profile files, in the same [len][content] framing, so import can read
-  // them sequentially by walking manifest.files then manifest.extensions.
+  // Collect bundled extension metadata (v2). Their payloads stream after the
+  // profile files in the same [len][content] framing, so import can read them
+  // sequentially by walking manifest.files then manifest.extensions.
   const bundled: BundledExtension[] = [];
-  const extChunks: Buffer[] = [];
+  const bundledFileLists: CollectedFile[][] = [];
   for (const ext of opts.extensions ?? []) {
     const extFiles = await collectFiles(ext.dir);
     if (extFiles.length === 0) continue; // nothing on disk to bundle
@@ -92,12 +95,7 @@ export async function exportProfile(
       version: ext.version,
       files: extFiles.map((f) => ({ path: f.relPath, size: f.size, sha256: f.sha256 })),
     });
-    for (const f of extFiles) {
-      const len = Buffer.alloc(4);
-      len.writeUInt32BE(f.size, 0);
-      extChunks.push(len);
-      extChunks.push(await readFile(f.absPath));
-    }
+    bundledFileLists.push(extFiles);
   }
 
   const manifest: ArchiveManifest = {
@@ -107,35 +105,62 @@ export async function exportProfile(
     files: files.map((f) => ({ path: f.relPath, size: f.size, sha256: f.sha256 })),
     extensions: bundled.length > 0 ? bundled : undefined,
   };
-
   const manifestJson = Buffer.from(JSON.stringify(manifest), "utf8");
   const manifestLen = Buffer.alloc(4);
   manifestLen.writeUInt32BE(manifestJson.length, 0);
 
-  const fileChunks: Buffer[] = [];
-  for (const f of files) {
-    const len = Buffer.alloc(4);
-    len.writeUInt32BE(f.size, 0);
-    fileChunks.push(len);
-    fileChunks.push(await readFile(f.absPath));
-  }
-
-  const plaintext = Buffer.concat([manifestLen, manifestJson, ...fileChunks, ...extChunks]);
-
   const salt = randomBytes(SALT_LEN);
   const iv = randomBytes(IV_LEN);
   const key = (await scrypt(passphrase, salt, KEY_LEN)) as Buffer;
-
   const cipher = createCipheriv(ALGO, key, iv);
-  const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
-  const tag = cipher.getAuthTag();
 
   const header = Buffer.alloc(6);
   header.write(MAGIC, 0, 4, "ascii");
   header.writeUInt16BE(VERSION, 4);
 
-  const out = Buffer.concat([header, salt, iv, ciphertext, tag]);
-  await writeFile(outPath, out);
+  // Streaming write: encrypt chunk-by-chunk straight to disk. The callback
+  // form of write() both applies backpressure (resolves when the chunk is
+  // flushed) and surfaces stream errors (a bare drain-await would hang).
+  const out = createWriteStream(outPath);
+  const write = (buf: Buffer): Promise<void> =>
+    new Promise((resolve, reject) => {
+      out.write(buf, (err) => (err ? reject(err) : resolve()));
+    });
+  const push = async (piece: Buffer): Promise<void> => {
+    const enc = cipher.update(piece);
+    if (enc.length > 0) await write(enc);
+  };
+  const frame = async (f: CollectedFile): Promise<void> => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(f.size, 0);
+    await push(len);
+    for await (const chunk of createReadStream(f.absPath)) {
+      await push(chunk as Buffer);
+    }
+  };
+
+  try {
+    await write(header);
+    await write(salt);
+    await write(iv);
+    await push(manifestLen);
+    await push(manifestJson);
+    for (const f of files) await frame(f);
+    for (const list of bundledFileLists) {
+      for (const f of list) await frame(f);
+    }
+    const tail = cipher.final();
+    if (tail.length > 0) await write(tail);
+    await write(cipher.getAuthTag());
+    await new Promise<void>((resolve, reject) => {
+      out.end((err?: Error | null) => (err ? reject(err) : resolve()));
+    });
+  } catch (e) {
+    out.destroy();
+    // Never leave a truncated (unimportable) archive behind on failure.
+    await rm(outPath, { force: true }).catch(() => {});
+    throw e;
+  }
 }
 
 export interface ImportOptions {
@@ -210,34 +235,42 @@ export async function importProfile(
 
   await mkdir(restored.dataDir, { recursive: true });
 
-  for (const fileMeta of manifest.files) {
-    const len = plaintext.readUInt32BE(cursor);
-    cursor += 4;
-    const content = plaintext.subarray(cursor, cursor + len);
-    cursor += len;
-    verifyChecksum(fileMeta, content);
-    await writeGuarded(restored.dataDir, fileMeta.path, content);
-  }
-
-  // v2: restore bundled shared-store extensions. The chunks follow the profile
-  // files in the same order as manifest.extensions[].files. We always read the
-  // chunks (to stay checksum-honest even when we skip writing), but only write
-  // to the store when a root is provided and the entry isn't already present.
-  for (const ext of manifest.extensions ?? []) {
-    const destDir = opts.extensionStoreRoot
-      ? join(opts.extensionStoreRoot, sanitizeSegment(ext.id), sanitizeSegment(ext.version || "0"))
-      : null;
-    // Don't clobber an extension the user already has in the store.
-    const skipWrite = !destDir || existsSync(destDir);
-    for (const fileMeta of ext.files) {
+  try {
+    for (const fileMeta of manifest.files) {
       const len = plaintext.readUInt32BE(cursor);
       cursor += 4;
       const content = plaintext.subarray(cursor, cursor + len);
       cursor += len;
       verifyChecksum(fileMeta, content);
-      if (skipWrite || !destDir) continue;
-      await writeGuarded(destDir, fileMeta.path, content);
+      await writeGuarded(restored.dataDir, fileMeta.path, content);
     }
+
+    // v2: restore bundled shared-store extensions. The chunks follow the profile
+    // files in the same order as manifest.extensions[].files. We always read the
+    // chunks (to stay checksum-honest even when we skip writing), but only write
+    // to the store when a root is provided and the entry isn't already present.
+    for (const ext of manifest.extensions ?? []) {
+      const destDir = opts.extensionStoreRoot
+        ? join(opts.extensionStoreRoot, sanitizeSegment(ext.id), sanitizeSegment(ext.version || "0"))
+        : null;
+      // Don't clobber an extension the user already has in the store.
+      const skipWrite = !destDir || existsSync(destDir);
+      for (const fileMeta of ext.files) {
+        const len = plaintext.readUInt32BE(cursor);
+        cursor += 4;
+        const content = plaintext.subarray(cursor, cursor + len);
+        cursor += len;
+        verifyChecksum(fileMeta, content);
+        if (skipWrite || !destDir) continue;
+        await writeGuarded(destDir, fileMeta.path, content);
+      }
+    }
+  } catch (e) {
+    // A failed restore must not leave a half-written dataDir behind — the DB
+    // row is only inserted after we return, so nobody would ever own (or
+    // clean up) the partial tree.
+    await rm(restored.dataDir, { recursive: true, force: true }).catch(() => {});
+    throw e;
   }
 
   return restored;
@@ -336,6 +369,3 @@ function fileSha256(path: string): Promise<string> {
     stream.on("error", reject);
   });
 }
-
-// Suppress unused-import warning for createWriteStream (kept for potential streaming variant)
-void createWriteStream;

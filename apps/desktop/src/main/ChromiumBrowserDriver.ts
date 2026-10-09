@@ -19,6 +19,7 @@ import {
   reconcileDeviceFamilyToHost,
   syncRunIntoProfile,
   type CookieBaseline,
+  type SyncRunResult,
 } from "@multizen/profile-manager";
 import type {
   ClientHints,
@@ -108,7 +109,14 @@ export type RunningStateChange =
       profileId: ProfileId;
       runId: string;
       reason: "user-close" | "external-exit";
-    };
+    }
+  // The browser process is dead but the run's identity is still being merged
+  // back into the profile dir (cookies + whole-tree copy-back). The GUI shows
+  // a "Saving…" state; launching/duplicating in this window would race the
+  // merge (the driver serializes it — the event is informational).
+  | { kind: "syncing"; profileId: ProfileId; runId: string }
+  // The exit sync landed (or failed permanently); the profile dir is quiescent.
+  | { kind: "saved"; profileId: ProfileId; runId: string };
 
 interface DriverEvents {
   "running-changed": (change: RunningStateChange) => void;
@@ -128,6 +136,21 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
   /** Keyed by RUN id — one browser process is one running instance, and a
    *  profile may have several at once (each with its own MCP endpoint). */
   private readonly running = new Map<string, RunningProcess>();
+  /** Runs whose browser has exited but whose exit sync-back is still
+   *  writing the profile dir. Kept separate from `running` so the GUI sees
+   *  the run as closed the moment the process dies, while isRunning() stays
+   *  true across the sync — the profile dir is mid-write and must not be
+   *  duplicated/exported from in that window. `done` resolves when the merge
+   *  has fully landed, so launch()/settleProfile() can await it before
+   *  touching the profile dir. */
+  private readonly syncing = new Map<string, { profileId: ProfileId; done: Promise<void> }>();
+  /** Per-profile operation chain serializing everything that READS or WRITES
+   *  the profile dir: launch-time working-copy materialization (read) and
+   *  exit sync-backs (write). Without it, a launch that slips in while a
+   *  dying sibling's sync is still queued would copy a half-merged tree —
+   *  and the sync's lazy isLastRun would then see the new run alive and skip
+   *  its whole-tree copy-back forever (silent identity loss). */
+  private readonly profileDirOps = new Map<ProfileId, Promise<unknown>>();
   private nextPort = 9222;
   private readonly profileManager: ProfileManager;
   private readonly bootstrap: ChromiumBootstrap;
@@ -169,37 +192,128 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
       const runDir = join(this.runsRoot, name);
       const profileId = profileIdFromRunDirName(name);
       const profile = profileId ? this.profileManager.get(profileId) : undefined;
-      if (!profile) {
+      if (!profileId || !profile) {
         await fsp.rm(runDir, { recursive: true, force: true }).catch(() => {});
         continue;
       }
       const engine = this.bootstrap.getEngine();
+      // Track the recovery sync like a live exit sync: isRunning() covers the
+      // profile while the merge writes its dir, and a launch racing this
+      // recovery (e.g. --launch-profile right after startup) waits it out via
+      // the same per-profile operation chain instead of copying a half-merged
+      // tree.
+      const syncBack = !profile.ephemeral;
+      const tracked = this.beginSync(name, profileId, syncBack);
       try {
-        await syncRunIntoProfile({
-          runDir,
-          profileDir: profile.dataDir,
-          runDataDir: browserDataDirForEngine(runDir, engine),
-          profileDataDir: browserDataDirForEngine(profile.dataDir, engine),
-          // Baseline unknown after a host restart — cookie deletions from
-          // the crashed run can't be told apart from sibling refreshes, so
-          // only merges/upserts are applied.
-          baseline: undefined,
-          syncBack: !profile.ephemeral,
-          isLastRun: true,
+        await this.serializeProfileOp(profileId, async () => {
+          const res = await syncRunIntoProfile({
+            runDir,
+            profileDir: profile.dataDir,
+            runDataDir: browserDataDirForEngine(runDir, engine),
+            profileDataDir: browserDataDirForEngine(profile.dataDir, engine),
+            // Baseline unknown after a host restart — cookie deletions from
+            // the crashed run can't be told apart from sibling refreshes, so
+            // only merges/upserts are applied.
+            baseline: undefined,
+            syncBack,
+            isLastRun: () => true,
+          });
+          if (res.ok) {
+            await fsp.rm(runDir, { recursive: true, force: true });
+            console.log(`[multizen] recovered orphan run dir: ${name}`);
+          } else {
+            // Sync failed (locks still held?) — keep the dir and retry on the
+            // NEXT startup rather than destroying unsynced identity changes.
+            console.warn(
+              `[multizen] orphan run dir kept for next startup (${name}): sync failed`,
+            );
+          }
         });
-        await fsp.rm(runDir, { recursive: true, force: true });
-        console.log(`[multizen] recovered orphan run dir: ${name}`);
       } catch (e) {
         console.warn(
           `[multizen] orphan run dir kept for next startup (${name}):`,
           (e as Error).message,
         );
+      } finally {
+        tracked.end();
       }
     }
   }
 
   override on<K extends keyof DriverEvents>(event: K, listener: DriverEvents[K]): this {
     return super.on(event, listener);
+  }
+
+  /** Register an in-flight exit sync so (a) isRunning() keeps covering the
+   *  profile while its dir is mid-write, (b) launch()/settleProfile() can
+   *  await it, and (c) the GUI can show a transitional "Saving…" state.
+   *  `notify` is false for ephemeral runs (their sync is an instant no-op —
+   *  flickering a state for it would be noise). Call `end()` exactly once
+   *  when the sync settles. */
+  private beginSync(
+    runKey: string,
+    profileId: ProfileId,
+    notify: boolean,
+  ): { done: Promise<void>; end: () => void } {
+    let resolve!: () => void;
+    const done = new Promise<void>((r) => {
+      resolve = r;
+    });
+    this.syncing.set(runKey, { profileId, done });
+    if (notify) {
+      this.emit("running-changed", { kind: "syncing", profileId, runId: runKey });
+    }
+    return {
+      done,
+      end: () => {
+        this.syncing.delete(runKey);
+        if (notify) {
+          this.emit("running-changed", { kind: "saved", profileId, runId: runKey });
+        }
+      },
+    };
+  }
+
+  /** Run `op` as the profile's next profile-dir operation. Launches (which
+   *  read the dir to materialize a working copy) and exit syncs (which write
+   *  it) share one chain per profile, so a copy can never observe a
+   *  half-merged tree and a sync can never run concurrently with a copy. */
+  private serializeProfileOp<T>(profileId: ProfileId, op: () => Promise<T>): Promise<T> {
+    const prev = this.profileDirOps.get(profileId) ?? Promise.resolve();
+    const run = prev.then(op, op);
+    // Store a failure-swallowing tail so one failed op can't poison the chain.
+    this.profileDirOps.set(
+      profileId,
+      run.then(
+        () => undefined,
+        () => undefined,
+      ),
+    );
+    return run;
+  }
+
+  /** Resolve when every in-flight exit sync has landed. before-quit waits on
+   *  this so app.exit() can never truncate a merge mid-write. */
+  async waitForSyncIdle(): Promise<void> {
+    while (this.syncing.size > 0) {
+      await Promise.all([...this.syncing.values()].map((s) => s.done));
+    }
+  }
+
+  /** Stop every live run of the profile AND wait out its in-flight exit
+   *  sync-back. Afterwards the profile dir is quiescent — safe to duplicate,
+   *  export, or delete. The delete paths must use this (a plain close()
+   *  returns the moment the browser dies, while the merge is still writing).
+   *  Callers that only want to check (not stop) should use isRunning(). */
+  async settleProfile(profileId: ProfileId): Promise<void> {
+    if (this.isRunning(profileId)) {
+      await this.close(profileId).catch(() => {});
+    }
+    for (;;) {
+      const pending = [...this.syncing.values()].filter((s) => s.profileId === profileId);
+      if (pending.length === 0) return;
+      await Promise.all(pending.map((s) => s.done));
+    }
   }
 
   override emit<K extends keyof DriverEvents>(
@@ -215,8 +329,9 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
 
     // One browser process = one RUN. A profile can have several runs at once;
     // every run gets its own MCP endpoint (port + token) so an agent can bind
-    // to exactly one browser.
-    const runId = `${profileId}-${Date.now()}`;
+    // to exactly one browser. The random suffix keeps two launches inside the
+    // same millisecond from colliding on one working-copy dir.
+    const runId = `${profileId}-${Date.now()}-${randomBytes(3).toString("hex")}`;
 
     // Update `last_opened_at` for every launch, regardless of trigger
     // (UI button, MCP tool, command palette). Done early so even a
@@ -237,7 +352,14 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
     // flow back through syncRunIntoProfile() once the browser has exited;
     // profiles flagged ephemeral skip that merge and stay purely disposable.
     const workingCopyDir = join(this.runsRoot, runId);
-    copyProfileData(profile.dataDir, workingCopyDir);
+    // Serialized against this profile's exit syncs (and any sibling launch
+    // copies): if a previous run's merge is still writing the profile dir —
+    // or is merely queued — this copy waits for it, so the working copy never
+    // captures a half-merged tree and the sync's lazy isLastRun never sees a
+    // phantom "new run" that makes it drop its whole-tree copy-back.
+    await this.serializeProfileOp(profileId, async () => {
+      await copyProfileData(profile.dataDir, workingCopyDir);
+    });
     const browserDataDir = browserDataDirForEngine(workingCopyDir, engine);
     const profileBrowserDataDir = browserDataDirForEngine(profile.dataDir, engine);
     // Snapshot the cookie PKs the run starts from — the exit merge needs it
@@ -586,7 +708,24 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
     // all within one budget. Guarantees the profile is actually drivable before
     // launch() resolves, so an MCP navigate/extract right after launch can't
     // race a not-yet-ready CDP endpoint.
-    await waitForCdpSessionReady(port, session, 15000);
+    try {
+      await waitForCdpSessionReady(port, session, 15000);
+    } catch (e) {
+      // cdpReadiness's contract: the CALLER tears down the half-launched
+      // browser. The child exit handler below is never registered on this
+      // path (launch() throws before then), so without this block the
+      // browser would keep running invisible to the GUI, the proxy bridge
+      // would leak its refcount, and the working copy would linger — all
+      // until the next startup's orphan recovery.
+      console.error("[multizen] CDP readiness failed — tearing down half-launched browser:", e);
+      await withTimeout(session.close(), 1000);
+      killPid(child.pid!, "SIGTERM");
+      if (!(await waitForPidDeath(child.pid!, 2000))) killPid(child.pid!, "SIGKILL");
+      // Balance the startBridgeForProfile() from above: no exit handler will
+      // ever run for this run. No-op when the profile has no proxy.
+      await stopBridgeForProfile(profileId).catch(() => {});
+      throw e;
+    }
 
     // Apply per-target emulation: timezone, locale, Sec-CH-UA via
     // userAgentMetadata (works on stock Chromium — no patches needed!),
@@ -879,31 +1018,6 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
       void stopBridgeForProfile(profileId).catch(() => {});
       if (record.mcpTransport) void record.mcpTransport.stop().catch(() => {});
       this.running.delete(runId);
-      if (record.workingCopyDir) {
-        // The browser is dead, so its file handles are released: merge this
-        // run's identity changes into the profile dir FIRST, then dispose of
-        // the working copy. It is never a source of truth — any run dir that
-        // can't be synced still gets deleted (crash losses are covered by
-        // recoverOrphanRunDirs() on the next startup).
-        const remaining = [...this.running.values()].filter((r) => r.profileId === profileId)
-          .length;
-        void syncRunIntoProfile({
-          runDir: record.workingCopyDir,
-          profileDir: record.profileDataDir,
-          runDataDir: record.browserDataDir,
-          profileDataDir: record.profileBrowserDataDir,
-          baseline: record.cookieBaseline,
-          syncBack: record.syncBack,
-          isLastRun: remaining === 0,
-        }).finally(() => {
-          const copyDir = record.workingCopyDir;
-          // A beat after the sync so Chromium helpers that outlive the main
-          // process release their handles before the recursive delete.
-          setTimeout(() => {
-            void fsp.rm(copyDir, { recursive: true, force: true }).catch(() => {});
-          }, 1500);
-        });
-      }
       if (wasTracked) {
         // closeRun() removes from the map first so wasTracked is false there;
         // this path covers (a) user quit Chrome directly with ⌘Q, and (b)
@@ -914,6 +1028,55 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
           runId,
           reason: "external-exit",
         });
+      }
+      if (record.workingCopyDir) {
+        // The browser is dead, so its file handles are released: merge this
+        // run's identity changes into the profile dir FIRST, then dispose of
+        // the working copy. Emitted AFTER "closed" so the GUI's terminal
+        // transition lands before the follow-up "syncing" transitional state.
+        // The run sits in `syncing` until the merge lands, which (a) keeps
+        // isRunning() true — the profile dir is mid-write, duplicate/export
+        // must wait — and (b) lets isLastRun be evaluated lazily AFTER the
+        // cookie merge, so sibling runs exiting near-simultaneously never run
+        // two whole-tree copy-overs at once. The sync itself is serialized
+        // against sibling launches' working-copy materialization so neither
+        // side ever sees a half-written profile dir.
+        const tracked = this.beginSync(runId, profileId, record.syncBack);
+        void this.serializeProfileOp(profileId, async () => {
+          let res: SyncRunResult;
+          try {
+            res = await syncRunIntoProfile({
+              runDir: record.workingCopyDir,
+              profileDir: record.profileDataDir,
+              runDataDir: record.browserDataDir,
+              profileDataDir: record.profileBrowserDataDir,
+              baseline: record.cookieBaseline,
+              syncBack: record.syncBack,
+              isLastRun: () => this.profileIdleForSyncBack(profileId, runId),
+            });
+          } catch (e) {
+            // syncRunIntoProfile is designed never to throw; this is
+            // belt-and-suspenders so a crash can't skip the syncing cleanup.
+            console.error(`[multizen] exit sync crashed:`, e);
+            res = { ok: false };
+          }
+          if (!res.ok) {
+            // Keep the working copy instead of deleting it: a failed sync
+            // must not silently destroy this run's unsynced identity
+            // changes. The next startup's recoverOrphanRunDirs() retries
+            // the merge once every lock is long gone.
+            console.warn(
+              `[multizen] run dir kept for next startup (exit sync failed): ${record.workingCopyDir}`,
+            );
+            return;
+          }
+          const copyDir = record.workingCopyDir;
+          // A beat after the sync so Chromium helpers that outlive the main
+          // process release their handles before the recursive delete.
+          setTimeout(() => {
+            void fsp.rm(copyDir, { recursive: true, force: true }).catch(() => {});
+          }, 1500);
+        }).finally(tracked.end);
       }
     });
 
@@ -935,6 +1098,21 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
     return [...this.running.values()]
       .filter((r) => r.profileId === profileId)
       .sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+  }
+
+  /** True when no OTHER run of this profile is alive or still syncing its
+   * identity back — i.e. the wholesale copy-back may run. Evaluated lazily
+   * after the cookie merge: with siblings exiting near-simultaneously, each
+   * sees the others still pending and skips the copy-back; only the last
+   * finisher runs it, on the freshest state, never concurrently. */
+  private profileIdleForSyncBack(profileId: ProfileId, selfRunId: string): boolean {
+    for (const [id, r] of this.running) {
+      if (id !== selfRunId && r.profileId === profileId) return false;
+    }
+    for (const [id, s] of this.syncing) {
+      if (id !== selfRunId && s.profileId === profileId) return false;
+    }
+    return true;
   }
 
   listRuns(): RunInfo[] {
@@ -979,10 +1157,11 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
     // Always emit "closed" — even if shutdown throws — so the GUI's terminating
     // state can never get stranded.
     try {
-      // Kill the browser FIRST, then stop the proxy bridge. Order matters: the
-      // bridge's server.close() blocks until the browser's socks connection
-      // ends, so stopping it before the browser is dead would hang close()
-      // forever (the real bug behind "Stop leaves Chromium running").
+      // Kill the browser FIRST. The proxy bridge is released by the child's
+      // exit handler (below) — exactly once per run. Calling stopBridge here
+      // as well used to double-decrement the bridge's refcount, killing the
+      // shared bridge out from under still-running sibling runs of the same
+      // profile (all their requests → ERR_PROXY_CONNECTION_FAILED).
       await gracefulShutdown(r);
       // Belt-and-suspenders: after the PID-based shutdown, sweep for ANY
       // process still holding this run's user-data-dir and SIGKILL it.
@@ -990,10 +1169,6 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
       // single tracked PID could miss. NOTE: for a first (persistent) run this
       // is the profile's own dir — a sibling ephemeral run has its own.
       await killBrowsersUsingDataDir(r.browserDataDir);
-      // Browser is gone now, so the bridge closes immediately (refcounted —
-      // sibling runs of the same profile keep it alive). Timeout-bounded
-      // anyway so a stuck socket can never strand Stop.
-      await withTimeout(stopBridgeForProfile(r.profileId), 2000);
     } finally {
       console.log(
         `[multizen] closeRun() done run=${runId} pid=${r.pid} alive=${isPidAlive(r.pid)}`,
@@ -1008,7 +1183,14 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
   }
 
   isRunning(profileId: ProfileId): boolean {
-    return [...this.running.values()].some((r) => r.profileId === profileId);
+    // Includes runs whose browser has exited but whose exit sync-back is
+    // still writing the profile dir — duplicating/exporting in that window
+    // would capture a mid-merge snapshot (torn cookie state, half-copied
+    // LevelDB trees).
+    return (
+      [...this.running.values()].some((r) => r.profileId === profileId) ||
+      [...this.syncing.values()].some((s) => s.profileId === profileId)
+    );
   }
 
   async navigate(runId: string, url: string): Promise<{ url: string }> {
@@ -1389,10 +1571,11 @@ function browserDataDirForEngine(profileDataDir: string, engine: BrowserEngine):
   return profileDataDir;
 }
 
-/** Run dirs are named `<profileId>-<Date.now()>`; peel the id back off for
- *  the startup orphan recovery. Null when the name doesn't match (→ sweep). */
+/** Run dirs are named `<profileId>-<ms>-<random6>` (older ones:
+ *  `<profileId>-<ms>`); peel the id back off for the startup orphan
+ *  recovery. Null when the name doesn't match (→ sweep). */
 function profileIdFromRunDirName(name: string): string | null {
-  const m = name.match(/^(.+)-(\d{13})$/);
+  const m = name.match(/^(.+)-(\d{13})(?:-[0-9a-f]{1,16})?$/);
   return m?.[1] ?? null;
 }
 
@@ -1446,6 +1629,29 @@ async function gracefulShutdown(r: RunningProcess): Promise<void> {
  *  + helpers). Exact substring match — no regex pitfalls with path chars. */
 async function pidsUsingDataDir(dataDir: string): Promise<number[]> {
   const needle = `--user-data-dir=${dataDir}`;
+  if (process.platform === "win32") {
+    // `ps` doesn't exist on Windows (the old code silently no-opped here, so
+    // the lingering-process sweep never ran on the primary platform). Query
+    // Win32_Process via PowerShell (wmic is deprecated on Win11). The needle
+    // travels through the environment — no quoting pitfalls with paths.
+    const script =
+      "Get-CimInstance Win32_Process -Property ProcessId,CommandLine | ForEach-Object { " +
+      "if ($_.CommandLine -and ($_.CommandLine.Contains($env:MZ_NEEDLE + ' ') -or " +
+      "$_.CommandLine.EndsWith($env:MZ_NEEDLE))) { $_.ProcessId } }";
+    try {
+      const { stdout } = await execFileP("powershell.exe", ["-NoProfile", "-Command", script], {
+        timeout: 15000,
+        windowsHide: true,
+        env: { ...process.env, MZ_NEEDLE: needle },
+      });
+      return stdout
+        .split(/\r?\n/)
+        .map((line) => Number.parseInt(line.trim(), 10))
+        .filter((pid) => Number.isFinite(pid) && pid > 0 && pid !== process.pid);
+    } catch {
+      return [];
+    }
+  }
   try {
     const { stdout } = await execFileP("ps", ["-Ao", "pid=,command="]);
     const pids: number[] = [];

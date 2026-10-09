@@ -60,6 +60,15 @@ export async function startBridgeForProfile(
 ): Promise<string> {
   const existing = byProfile.get(profileId);
   if (existing) {
+    // The bridge is shared by ALL runs of the profile (same egress IP by
+    // design), so a proxy config edited between two launches can't apply
+    // until every run has stopped — say so instead of failing silently.
+    if (JSON.stringify(existing.upstream) !== JSON.stringify(upstream)) {
+      console.warn(
+        "[multizen] proxy config changed but this profile's bridge is still in use — " +
+          "the new run keeps the OLD upstream until all instances of the profile stop",
+      );
+    }
     bridgeRefs.set(profileId, (bridgeRefs.get(profileId) ?? 0) + 1);
     return `socks5://127.0.0.1:${existing.port}`;
   }

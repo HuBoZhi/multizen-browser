@@ -37,6 +37,8 @@ export const ZH: Record<string, string> = {
   "Launch failed: {message}": "启动失败：{message}",
   'Duplicated as "{name}"': "已复制为“{name}”",
   "Duplicate failed: {message}": "复制失败：{message}",
+  "Profile is running — stop it before duplicating": "Profile 正在运行，请先停止后再复制副本",
+  "Merging this run's identity back into the profile…": "正在将该实例的身份合并回配置目录…",
   "Screenshot failed: {message}": "截图失败：{message}",
   "Screenshot — {label}": "截图 — {label}",
   "Captured from inside the browser via CDP — page content only, never the desktop.":

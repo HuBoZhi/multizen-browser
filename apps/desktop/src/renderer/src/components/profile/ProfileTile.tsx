@@ -57,6 +57,11 @@ interface Props {
   /** Chromium is winding down (window closed / Stop pressed) but not yet
    *  exited — show a "Terminating…" transitional state instead of "Stop". */
   terminating?: boolean;
+  /** The browser has exited but this run's identity is still merging back
+   *  into the profile dir — show a "Saving…" state instead of action
+   *  buttons (launching now is serialized by the driver, but the affordance
+   *  would mislead: the copy waits for the merge either way). */
+  syncing?: boolean;
   onOpen: () => void;
   onLaunch: () => Promise<void> | void;
   /** Launch ONE MORE instance (run 2+ executes on a disposable copy). */
@@ -75,6 +80,7 @@ export function ProfileTile({
   profile,
   runs,
   terminating = false,
+  syncing = false,
   onOpen,
   onLaunch,
   onNewInstance,
@@ -295,7 +301,18 @@ export function ProfileTile({
           </div>
         )}
         <div className="flex gap-1.5">
-          {showTerminating ? (
+          {syncing && liveRuns.length === 0 ? (
+            <Button
+              variant="secondary"
+              size="md"
+              className="flex-1"
+              disabled
+              title={t("Merging this run's identity back into the profile…")}
+              leftIcon={<Loader2 size={11} className="animate-spin" />}
+            >
+              {t("Saving…")}
+            </Button>
+          ) : showTerminating ? (
             <Button
               variant="secondary"
               size="md"
@@ -343,7 +360,13 @@ export function ProfileTile({
               </Button>
             </>
           )}
-          <ActionMenu onEdit={onOpen} onExport={onExport} onDuplicate={onDuplicate} onDelete={onDelete} />
+          <ActionMenu
+            onEdit={onOpen}
+            onExport={onExport}
+            onDuplicate={onDuplicate}
+            duplicateDisabled={isRunning || terminating}
+            onDelete={onDelete}
+          />
         </div>
       </div>
     </div>
@@ -493,11 +516,14 @@ function ActionMenu({
   onEdit,
   onExport,
   onDuplicate,
+  duplicateDisabled,
   onDelete,
 }: {
   onEdit: () => void;
   onExport: () => void;
   onDuplicate: () => void;
+  /** Source profile running/winding down — its files are locked, a copy now could be corrupt. */
+  duplicateDisabled?: boolean;
   onDelete: () => void;
 }): JSX.Element {
   const { t } = useI18n();
@@ -565,7 +591,9 @@ function ActionMenu({
               <MenuItem onClick={() => { setOpen(false); onExport(); }}>
                 {t("Export archive…")}
               </MenuItem>
-              <MenuItem onClick={() => { setOpen(false); onDuplicate(); }}>
+              <MenuItem onClick={() => { setOpen(false); onDuplicate(); }} disabled={duplicateDisabled}
+                title={duplicateDisabled ? t("Profile is running — stop it before duplicating") : undefined}
+              >
                 {t("Duplicate")}
               </MenuItem>
               <div style={{ height: 1, margin: "4px 0", background: "rgba(255,255,255,0.06)" }} />
@@ -584,18 +612,29 @@ function MenuItem({
   children,
   onClick,
   tone,
+  disabled,
+  title,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   tone?: "danger";
+  /** Greyed out, no hover, no click (kept visible so the affordance stays discoverable). */
+  disabled?: boolean;
+  title?: string;
 }): JSX.Element {
   return (
     <button
       type="button"
+      disabled={disabled}
+      title={title}
       onClick={onClick}
       className={cn(
-        "w-full text-left px-3 py-1.5 text-[12px] cursor-pointer transition-colors hover:bg-white/[0.05]",
-        tone === "danger" ? "text-red-400" : "text-neutral-200",
+        "w-full text-left px-3 py-1.5 text-[12px] transition-colors",
+        disabled
+          ? "text-neutral-500 cursor-default"
+          : tone === "danger"
+            ? "text-red-400 cursor-pointer hover:bg-white/[0.05]"
+            : "text-neutral-200 cursor-pointer hover:bg-white/[0.05]",
       )}
     >
       {children}

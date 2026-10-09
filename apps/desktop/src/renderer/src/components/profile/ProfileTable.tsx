@@ -10,6 +10,9 @@ interface Props {
   runs?: RunInfo[];
   /** Profiles in the terminating phase (winding down, not yet exited). */
   closingIds?: Set<string>;
+  /** Profiles whose browser exited but whose identity merge-back is still
+   *  writing the profile dir — surfaced as a "Saving…" state. */
+  syncingIds?: Set<string>;
   onSelect: (id: string) => void;
   onLaunch: (id: string) => Promise<void> | void;
   onNewInstance: (id: string) => Promise<void> | void;
@@ -41,6 +44,7 @@ export function ProfileTable({
   profiles,
   runs,
   closingIds,
+  syncingIds,
   onSelect,
   onLaunch,
   onNewInstance,
@@ -88,6 +92,7 @@ export function ProfileTable({
           profile={p}
           runs={runs?.filter((r) => r.profileId === p.id)}
           terminating={closingIds?.has(p.id) ?? false}
+          syncing={syncingIds?.has(p.id) ?? false}
           onOpen={() => onSelect(p.id)}
           onLaunch={() => onLaunch(p.id)}
           onNewInstance={() => onNewInstance(p.id)}

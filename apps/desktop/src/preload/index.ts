@@ -64,8 +64,13 @@ interface SystemInfo {
 }
 
 export type RunningStateChange =
-  | { kind: "launched"; profileId: ProfileId }
-  | { kind: "closed"; profileId: ProfileId; reason: "user-close" | "external-exit" };
+  | { kind: "launched"; profileId: ProfileId; runId?: string }
+  | { kind: "closing"; profileId: ProfileId; runId?: string }
+  | { kind: "closed"; profileId: ProfileId; runId?: string; reason: "user-close" | "external-exit" }
+  /** Browser dead; this run's identity is still merging back into the profile dir. */
+  | { kind: "syncing"; profileId: ProfileId; runId?: string }
+  /** The exit sync settled — profile dir quiescent again. */
+  | { kind: "saved"; profileId: ProfileId; runId?: string };
 
 const api = {
   profiles: {

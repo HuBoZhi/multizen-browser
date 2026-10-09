@@ -16,6 +16,7 @@ import { ChromiumBootstrapModal } from "./components/onboarding/ChromiumBootstra
 import { UpdateBanner } from "./components/UpdateBanner";
 import { Modal, ConfirmHost, confirm } from "./components/atoms";
 import { readPersisted, usePersistedState, writePersisted } from "./lib/persisted";
+import { ipcErrorMessage } from "./lib/ipcError";
 import { useI18n } from "./lib/i18n";
 import type { ActivityEvent, ChromiumStatus, ProfileSummary, RunInfo, SystemInfo } from "./types";
 
@@ -43,6 +44,11 @@ export function App(): JSX.Element {
   // Profiles whose Chromium is winding down (window closed / Stop pressed) but
   // hasn't fully exited — surfaced as a "Terminating…" state on the card.
   const [closingIds, setClosingIds] = useState<Set<string>>(new Set());
+  // Profiles whose browser has exited but whose identity is still merging
+  // back into the profile dir — "Saving…" state. No safety timer: unlike
+  // process wind-down this is bounded by the driver's own sync lifecycle and
+  // always ends with a "saved" event.
+  const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
   // One live safety-net timer per terminating profile. Keyed by id so a
   // re-terminate (or a relaunch) cancels the *previous* episode's timer
   // instead of letting a stale one fire and clear a genuinely-closing card.
@@ -149,7 +155,13 @@ export function App(): JSX.Element {
       setClosingIds((prev) => {
         const next = new Set(prev);
         if (change.kind === "closing") next.add(id);
-        else next.delete(id); // launched / closed
+        else next.delete(id); // launched / closed / syncing / saved
+        return next;
+      });
+      setSyncingIds((prev) => {
+        const next = new Set(prev);
+        if (change.kind === "syncing") next.add(id);
+        else next.delete(id); // launched / closing / closed / saved
         return next;
       });
       if (change.kind === "closing") {
@@ -262,7 +274,7 @@ export function App(): JSX.Element {
       const copy = await window.multizen.profiles.duplicate(id);
       showToast(t('Duplicated as "{name}"', { name: copy.name }));
     } catch (e) {
-      showToast(t("Duplicate failed: {message}", { message: (e as Error).message }));
+      showToast(t("Duplicate failed: {message}", { message: ipcErrorMessage(e) }));
     }
     await refresh();
   }
@@ -445,6 +457,7 @@ export function App(): JSX.Element {
                   runs={runs}
                   recentEvents={events}
                   closingIds={closingIds}
+                  syncingIds={syncingIds}
                   onSelect={openEditFor}
                   onCreate={() => setShowSheet(true)}
                   onLaunch={launchProfile}

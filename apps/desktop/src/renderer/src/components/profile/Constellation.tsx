@@ -2,7 +2,6 @@ import { useMemo, useState, type JSX } from "react";
 import { Grid3x3, List, Plus } from "lucide-react";
 import type { ProfileSummary, ActivityEvent } from "../../types";
 import type { RunInfo } from "@multizen/types";
-import { Kbd } from "../atoms";
 import { ProfileTile, deriveTileState, type TileData, type TileState } from "./ProfileTile";
 import { ProfileTable } from "./ProfileTable";
 import { usePersistedState } from "../../lib/persisted";
@@ -39,6 +38,9 @@ interface Props {
   recentEvents: ActivityEvent[];
   /** Profiles in the terminating phase (winding down, not yet exited). */
   closingIds?: Set<string>;
+  /** Profiles whose browser exited but whose identity merge-back is still
+   *  writing the profile dir — surfaced as a "Saving…" state. */
+  syncingIds?: Set<string>;
   onSelect: (id: string) => void;
   onCreate: () => void;
   onLaunch: (id: string) => void;
@@ -59,6 +61,7 @@ export function Constellation({
   runs,
   recentEvents,
   closingIds,
+  syncingIds,
   onSelect,
   onCreate,
   onLaunch,
@@ -166,7 +169,6 @@ export function Constellation({
         >
           <Plus size={12} strokeWidth={2} />
           {t("New profile")}
-          <Kbd variant="on-brand">⌘ N</Kbd>
         </button>
       </div>
 
@@ -244,6 +246,7 @@ export function Constellation({
             profiles={filtered}
             runs={runs}
             closingIds={closingIds}
+            syncingIds={syncingIds}
             onSelect={onSelect}
             onLaunch={onLaunch}
             onNewInstance={onNewInstance}
@@ -267,6 +270,7 @@ export function Constellation({
                 profile={p}
                 runs={runs?.filter((r) => r.profileId === p.id)}
                 terminating={closingIds?.has(p.id) ?? false}
+                syncing={syncingIds?.has(p.id) ?? false}
                 onOpen={() => onSelect(p.id)}
                 onLaunch={() => onLaunch(p.id)}
                 onNewInstance={() => onNewInstance(p.id)}

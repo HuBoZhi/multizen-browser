@@ -93,26 +93,39 @@ export interface SyncRunOptions {
   /** The profile's persistent data root (the sync-back target). */
   profileDir: string;
   /** Engine-scoped browser data dirs (run side / profile side) — cookie
-   *  merges happen between these (e.g. `<root>/engines/cloakbrowser`). */
+   * merges happen between these (e.g. `<root>/engines/cloakbrowser`). */
   runDataDir: string;
   profileDataDir: string;
   /** Cookie snapshot from launch; enables logout (deletion) propagation. */
   baseline?: CookieBaseline;
   /** false for ephemeral profiles — the profile dir is never touched. */
   syncBack: boolean;
-  /** true when this run is the last live one of its profile → the wholesale
-   *  copy-back of non-cookie stores is allowed. */
-  isLastRun: boolean;
+  /** Evaluated AFTER the cookie merge, right before the wholesale copy-back
+   * decides whether to run: true when no sibling run of this profile is
+   * still alive or syncing. Lazy on purpose — when siblings exit near-
+   * simultaneously, each skips the copy-back while another is pending, so
+   * the LAST cookie-merge finisher carries the freshest whole-tree state
+   * back instead of two copy-overs racing on the same files. */
+  isLastRun: () => boolean;
+}
+
+export interface SyncRunResult {
+  /** false when a write layer failed (lock retries exhausted or a hard
+   * error). The caller must then KEEP the run dir: deleting it would
+   * silently destroy that run's unsynced identity changes, while the next
+   * startup's orphan recovery retries the merge with the locks long gone. */
+  ok: boolean;
 }
 
 /**
  * Merge one finished run back into its profile dir. Never throws: every
- * failure is logged and the caller still deletes the working copy (a failed
- * sync loses that run's newest identity changes; it must never wedge
- * disposal or leave run dirs behind).
+ * failure is captured in the returned {@link SyncRunResult} instead, so the
+ * caller can decide between disposing of the working copy (ok) and keeping
+ * it for the startup orphan recovery (!ok).
  */
-export async function syncRunIntoProfile(opts: SyncRunOptions): Promise<void> {
-  if (!opts.syncBack) return;
+export async function syncRunIntoProfile(opts: SyncRunOptions): Promise<SyncRunResult> {
+  if (!opts.syncBack) return { ok: true };
+  let ok = true;
   for (let attempt = 1; ; attempt++) {
     try {
       const res = await mergeRunCookies(opts.runDataDir, opts.profileDataDir, opts.baseline);
@@ -123,12 +136,13 @@ export async function syncRunIntoProfile(opts: SyncRunOptions): Promise<void> {
     } catch (e) {
       if (attempt >= 3 || !isTransientLockError(e)) {
         console.error(`[multizen] cookie merge failed:`, (e as Error).message);
+        ok = false;
         break;
       }
       await sleep(800);
     }
   }
-  if (!opts.isLastRun) return;
+  if (!opts.isLastRun()) return { ok };
   for (let attempt = 1; ; attempt++) {
     try {
       const files = await copyBackRunTree(opts.runDir, opts.profileDir);
@@ -137,11 +151,13 @@ export async function syncRunIntoProfile(opts: SyncRunOptions): Promise<void> {
     } catch (e) {
       if (attempt >= 3 || !isTransientLockError(e)) {
         console.error(`[multizen] profile copy-back failed:`, (e as Error).message);
+        ok = false;
         break;
       }
       await sleep(800);
     }
   }
+  return { ok };
 }
 
 type MergeStatus = "merged" | "bootstrap-copy" | "missing-run-db" | "skipped-schema";
@@ -168,22 +184,27 @@ async function mergeRunCookies(
     return { status: "missing-run-db", upserted: 0, deleted: 0 };
   }
   const profileDbPath = join(profileDataDir, COOKIE_DB);
-  if (!existsSync(profileDbPath)) {
-    // First-ever sync: the run's file is authoritative and neither side is
-    // open by a browser — take it wholesale. Encrypted cookie blobs stay
-    // valid: the run's os_crypt key IS the profile's (it was copied from
-    // here at launch).
-    await fsp.mkdir(dirname(profileDbPath), { recursive: true });
-    await fsp.copyFile(runDbPath, profileDbPath);
-    for (const suffix of COOKIE_DB_SIDECARS) {
-      const src = runDbPath + suffix;
-      if (existsSync(src)) await fsp.copyFile(src, profileDbPath + suffix).catch(() => {});
+  // The profile-side existence check AND the bootstrap copy both run inside
+  // the per-profile lock: two sibling runs exiting near-simultaneously onto a
+  // profile that has no cookie DB yet would otherwise EACH take the wholesale
+  // bootstrap path, and the second copy would silently overwrite the first's
+  // rows (the very loss the row-level merge exists to prevent).
+  return withCookieMergeLock(profileDbPath, async () => {
+    if (!existsSync(profileDbPath)) {
+      // First-ever sync: the run's file is authoritative and neither side is
+      // open by a browser — take it wholesale. Encrypted cookie blobs stay
+      // valid: the run's os_crypt key IS the profile's (it was copied from
+      // here at launch).
+      await fsp.mkdir(dirname(profileDbPath), { recursive: true });
+      await fsp.copyFile(runDbPath, profileDbPath);
+      for (const suffix of COOKIE_DB_SIDECARS) {
+        const src = runDbPath + suffix;
+        if (existsSync(src)) await fsp.copyFile(src, profileDbPath + suffix).catch(() => {});
+      }
+      return { status: "bootstrap-copy", upserted: 0, deleted: 0 };
     }
-    return { status: "bootstrap-copy", upserted: 0, deleted: 0 };
-  }
-  return withCookieMergeLock(profileDbPath, () =>
-    mergeRunCookiesLocked(runDbPath, profileDbPath, baseline),
-  );
+    return mergeRunCookiesLocked(runDbPath, profileDbPath, baseline);
+  });
 }
 
 // Serialize merges per profile DB — sibling runs can exit near-simultaneously
@@ -294,7 +315,12 @@ function cookieDbVersion(db: Database.Database): string | null {
       | { value?: string }
       | undefined;
     return row?.value ?? null;
-  } catch {
+  } catch (e) {
+    // A locked / transiently unreadable DB must surface as a retryable
+    // failure — swallowing it here would masquerade as "unknown schema"
+    // (a deliberate no-op) and silently drop the run's cookies once the
+    // caller deletes the run dir.
+    if (isTransientLockError(e)) throw e;
     return null;
   }
 }

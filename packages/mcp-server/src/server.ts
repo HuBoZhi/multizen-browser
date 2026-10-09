@@ -192,6 +192,11 @@ export interface BrowserDriver {
   launch(profileId: ProfileId): Promise<LaunchedProfile>;
   /** Close EVERY running instance of the profile. */
   close(profileId: ProfileId): Promise<void>;
+  /** Close every running instance AND wait out the profile's in-flight exit
+   *  sync-back — afterwards the profile dir is quiescent. Destructive
+   *  consumers (delete) must use this instead of close(), which returns the
+   *  moment the browser dies while the identity merge is still writing. */
+  settleProfile(profileId: ProfileId): Promise<void>;
   /** Close exactly one running instance (identified by its run id). */
   closeRun(runId: string): Promise<void>;
   /** True when the profile has at least one live running instance. */
@@ -601,12 +606,13 @@ async function dispatch(
     case "delete_profile": {
       const { profile_id } = ProfileIdSchema.parse(args);
       assertProfileExists(profileManager, profile_id);
-      // Close first so Chromium releases the data dir before we remove it
-      // (on Windows a live handle would otherwise block the rmSync).
-      if (browserDriver.isRunning(profile_id)) {
-        await browserDriver.close(profile_id);
-      }
-      profileManager.delete(profile_id);
+      // Stop the browsers AND wait out the exit sync-back before the dir is
+      // removed: close() alone returns the moment the process dies, while the
+      // identity merge is still writing the profile dir (on Windows a live
+      // handle would otherwise block the removal, and racing it leaves a
+      // half-recreated tree with no DB row).
+      await browserDriver.settleProfile(profile_id);
+      await profileManager.delete(profile_id);
       return { deleted: profile_id };
     }
     case "list_fingerprint_options": {

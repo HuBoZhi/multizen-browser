@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import { v4 as uuidv4 } from "uuid";
-import { copyFileSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
-import { basename, join } from "node:path";
+import { mkdirSync, promises as fsp } from "node:fs";
+import { join } from "node:path";
 import type {
   Profile,
   ProfileId,
@@ -58,12 +58,14 @@ interface ProfileRow {
 /**
  * Copy a profile's browser data from `srcDir` to `destDir`, skipping
  * regenerable caches and singleton locks. Shared by duplicate() (permanent
- * same-identity copy) and the driver's ephemeral run materialization —
- * both need "the identity, minus the junk".
+ * same-identity copy) and the driver's run materialization — both need
+ * "the identity, minus the junk". Async throughout: a profile dir can be
+ * gigabytes, and this runs in the Electron main process where a synchronous
+ * copy would freeze every IPC round-trip.
  */
-export function copyProfileData(srcDir: string, destDir: string): void {
-  mkdirSync(destDir, { recursive: true });
-  copyTreeBestEffort(srcDir, destDir);
+export async function copyProfileData(srcDir: string, destDir: string): Promise<void> {
+  await fsp.mkdir(destDir, { recursive: true });
+  await copyTreeBestEffort(srcDir, destDir);
 }
 
 /**
@@ -75,10 +77,10 @@ export function copyProfileData(srcDir: string, destDir: string): void {
  * make parallel instances of a live profile impossible. Regenerable caches
  * and singleton locks are excluded via SKIPPED_ON_DUPLICATE either way.
  */
-function copyTreeBestEffort(srcDir: string, destDir: string): void {
+async function copyTreeBestEffort(srcDir: string, destDir: string): Promise<void> {
   let entries;
   try {
-    entries = readdirSync(srcDir, { withFileTypes: true });
+    entries = await fsp.readdir(srcDir, { withFileTypes: true });
   } catch {
     return;
   }
@@ -87,13 +89,13 @@ function copyTreeBestEffort(srcDir: string, destDir: string): void {
     const src = join(srcDir, e.name);
     const dst = join(destDir, e.name);
     if (e.isDirectory()) {
-      mkdirSync(dst, { recursive: true });
-      copyTreeBestEffort(src, dst);
+      await fsp.mkdir(dst, { recursive: true }).catch(() => {});
+      await copyTreeBestEffort(src, dst);
       continue;
     }
     try {
-      if (!statSync(src).isFile()) continue;
-      copyFileSync(src, dst);
+      if (!(await fsp.stat(src)).isFile()) continue;
+      await fsp.copyFile(src, dst);
     } catch {
       // Locked / vanished / unreadable mid-write — best effort continues.
     }
@@ -258,13 +260,13 @@ export class ProfileManager {
    * NOT be running (Chromium holds a write lock on its user-data-dir while
    * alive, and SQLite/LevelDB files would be mid-write); the caller enforces.
    */
-  duplicate(id: ProfileId, name?: string): Profile {
+  async duplicate(id: ProfileId, name?: string): Promise<Profile> {
     const src = this.get(id);
     if (!src) throw new Error(`Profile ${id} not found`);
 
     const newId = uuidv4();
     const dataDir = join(this.profilesRoot, newId);
-    copyProfileData(src.dataDir, dataDir);
+    await copyProfileData(src.dataDir, dataDir);
 
     const now = new Date().toISOString();
     const profile: Profile = {
@@ -408,19 +410,18 @@ export class ProfileManager {
       .run(country, id);
   }
 
-  delete(id: ProfileId): void {
+  async delete(id: ProfileId): Promise<void> {
     // Remove the on-disk profile directory (cookies, Chromium state, and any
     // installed extensions under dataDir/extensions/) so deleting a profile
-    // doesn't orphan its data. Best-effort — a locked dir shouldn't block the
-    // DB delete.
+    // doesn't orphan its data. Best-effort async removal — a locked dir
+    // shouldn't block the DB delete, and a recursive delete of a multi-GB
+    // tree must never run synchronously on the main process.
     const existing = this.get(id);
     this.db.prepare(`DELETE FROM profiles WHERE id = ?`).run(id);
     if (existing) {
-      try {
-        rmSync(existing.dataDir, { recursive: true, force: true });
-      } catch {
-        // ignore — directory may be in use; DB row is already gone.
-      }
+      await fsp
+        .rm(existing.dataDir, { recursive: true, force: true })
+        .catch(() => {/* directory may be in use; DB row is already gone. */});
     }
   }
 

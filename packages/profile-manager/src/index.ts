@@ -5,6 +5,7 @@ export {
   copyBackRunTree,
   type CookieBaseline,
   type SyncRunOptions,
+  type SyncRunResult,
 } from "./sync.js";
 export {
   defaultFingerprint,

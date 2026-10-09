@@ -608,9 +608,13 @@ app.whenReady().then(async () => {
     (_e, id: string, patch: Parameters<ProfileManager["update"]>[1]) =>
       profileManager.update(id, patch),
   );
-  ipcMain.handle("profiles:delete", (_e, id: string) => {
-    void browserDriver.close(id).catch(() => {});
-    profileManager.delete(id);
+  ipcMain.handle("profiles:delete", async (_e, id: string) => {
+    // Stop the browsers AND wait out the exit sync-back before touching the
+    // dir: close() returns the moment the process dies while the merge is
+    // still writing, and rmSync racing it leaves a half-recreated tree with
+    // no DB row to ever clean it up.
+    await browserDriver.settleProfile(id).catch(() => {});
+    await profileManager.delete(id);
     // Reclaim shared store entries this profile referenced that no other profile
     // still uses (delete() only removed the profile's own dataDir). Best-effort.
     void sweepOrphans(
@@ -625,10 +629,16 @@ app.whenReady().then(async () => {
   // SQLite/LevelDB files would produce a corrupt copy.
   ipcMain.handle("profiles:duplicate", (_e, id: string) => {
     if (browserDriver.isRunning(id)) {
+      // This reaches the renderer as a toast, so it must follow the UI language.
       throw new Error(
-        `Profile is running — stop it before duplicating. ` +
-          `Chromium keeps its profile files open and mid-write while alive; ` +
-          `a copy taken now could be corrupt.`,
+        tt(
+          `Profile is running — stop it before duplicating. ` +
+            `Chromium keeps its profile files open and mid-write while alive; ` +
+            `a copy taken now could be corrupt.`,
+          `Profile 正在运行，请先停止后再复制副本。` +
+            `Chromium 运行期间会持续占用并写入配置文件，` +
+            `此时复制出的副本可能已损坏。`,
+        ),
       );
     }
     return profileManager.duplicate(id);
@@ -849,12 +859,37 @@ app.whenReady().then(async () => {
     async (_e, id: string, passphrase: string): Promise<{ ok: true; path: string } | { ok: false; reason: string }> => {
       const profile = profileManager.get(id);
       if (!profile) return { ok: false, reason: "not_found" };
+      // Same mid-write window as duplicate: a run's exit sync can still be
+      // writing the profile dir after the browser died (GUI already shows
+      // closed) — exporting from it would archive a torn snapshot.
+      if (browserDriver.isRunning(id)) {
+        return {
+          ok: false,
+          reason: tt(
+            `Profile is running — stop it before exporting.`,
+            `Profile 正在运行，请先停止后再导出。`,
+          ),
+        };
+      }
       const result = await dialog.showSaveDialog(mainWindow ?? undefined!, {
         title: tt("Export profile", "导出配置"),
         defaultPath: `${profile.name.replace(/[^a-z0-9-_]+/gi, "_")}.mzar`,
         filters: [{ name: "MultiZen archive", extensions: ["mzar"] }],
       });
       if (result.canceled || !result.filePath) return { ok: false, reason: "cancelled" };
+      // Re-check AFTER the dialog: the save dialog can stay open for seconds,
+      // and a run that exited in the meantime may still be mid-sync-back —
+      // archiving now would capture a torn snapshot (the pre-dialog check
+      // can't cover the dialog's own lifetime).
+      if (browserDriver.isRunning(id)) {
+        return {
+          ok: false,
+          reason: tt(
+            `Profile is running — stop it before exporting.`,
+            `Profile 正在运行，请先停止后再导出。`,
+          ),
+        };
+      }
       // Bundle the profile's shared-store extensions so importing on another
       // machine restores the extension code too, not just a dangling reference.
       const extensions = (profile.extensions ?? [])
@@ -980,6 +1015,12 @@ app.on("before-quit", async (e) => {
   e.preventDefault();
   try {
     await browserDriver?.closeAll();
+    // closeAll() returns when the processes die — the exit syncs it triggered
+    // are still writing. Let them land before the hard exit, or app.exit()
+    // truncates a merge mid-write (the run dirs survive for next-startup
+    // orphan recovery, but a half-copied profile file doesn't have to happen
+    // in the first place).
+    await browserDriver?.waitForSyncIdle();
     await httpTransport?.stop();
     profileManager?.close();
   } finally {

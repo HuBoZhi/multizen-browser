@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
-import { captureCookieBaseline, syncRunIntoProfile } from "./dist/sync.js";
+import { captureCookieBaseline, syncRunIntoProfile } from "../dist/sync.js";
 
 const SCHEMA = `
 CREATE TABLE cookies (
@@ -112,7 +112,7 @@ try {
     profileDataDir: P,
     baseline,
     syncBack: true,
-    isLastRun: false, // cookies only — copy-back assertions come separately
+    isLastRun: () => false, // cookies only — copy-back assertions come separately
   });
 
   const rows = readRows(P);
@@ -137,7 +137,7 @@ try {
     profileDataDir: P,
     baseline: undefined,
     syncBack: true,
-    isLastRun: false,
+    isLastRun: () => false,
   });
   check("schema mismatch → no rows changed", readRows(P).length === 5);
 
@@ -152,7 +152,7 @@ try {
     profileDataDir: join(profile3, "e"),
     baseline: undefined,
     syncBack: true,
-    isLastRun: false,
+    isLastRun: () => false,
   });
   check(
     "bootstrap-copy materialized cookie db",
@@ -168,7 +168,7 @@ try {
     profileDataDir: P,
     baseline,
     syncBack: false,
-    isLastRun: true,
+    isLastRun: () => true,
   });
   check("ephemeral: cookie db untouched", readFileSync(join(P, "Default", "Network", "Cookies")).length === before);
 
@@ -195,7 +195,7 @@ try {
     profileDataDir: P,
     baseline: undefined,
     syncBack: true,
-    isLastRun: true,
+    isLastRun: () => true,
   });
   check("Local State copied back", readFileSync(join(profile, "Local State"), "utf8") === '{"run":true}');
   check("Preferences copied back", existsSync(join(profile, "Default", "Preferences")));
