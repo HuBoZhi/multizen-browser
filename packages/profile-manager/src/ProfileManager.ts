@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import { v4 as uuidv4 } from "uuid";
 import { mkdirSync, promises as fsp } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import type {
   Profile,
   ProfileId,
@@ -266,7 +266,19 @@ export class ProfileManager {
 
     const newId = uuidv4();
     const dataDir = join(this.profilesRoot, newId);
-    await copyProfileData(src.dataDir, dataDir);
+    // A duplicate must carry ALL identity data, rather than silently dropping
+    // unreadable Cookies/LevelDB files and reporting a logged-out partial copy
+    // as successful. Independent file copies; never link back to the source.
+    try {
+      await fsp.cp(src.dataDir, dataDir, {
+        recursive: true,
+        dereference: true,
+        filter: (path) => path === src.dataDir || !SKIPPED_ON_DUPLICATE.has(basename(path)),
+      });
+    } catch (e) {
+      await fsp.rm(dataDir, { recursive: true, force: true });
+      throw e;
+    }
 
     const now = new Date().toISOString();
     const profile: Profile = {
