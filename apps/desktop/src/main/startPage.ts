@@ -8,8 +8,9 @@
  * patched-Chromium build; only the start page ships for now.
  */
 
-/** Opened on a profile's first launch when it has no explicit `startUrl`. */
-export const DEFAULT_START_URL = "https://duckduckgo.com/";
+/** Opened when a profile has no explicit `startUrl` — which is every
+ *  launch, since session restore is off (the driver opens exactly one tab). */
+export const DEFAULT_START_URL = "https://www.douyin.com/";
 
 /**
  * Sanitize a profile's start URL into a safe positional Chromium arg. Only

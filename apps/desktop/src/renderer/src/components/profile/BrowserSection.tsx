@@ -15,7 +15,7 @@ import { useI18n } from "../../lib/i18n";
 
 /** Prefilled into the Start page input for new profiles (a real, editable
  *  value — the user can select/clear it, not just a placeholder). */
-export const DEFAULT_START_URL = "https://duckduckgo.com/";
+export const DEFAULT_START_URL = "https://www.douyin.com/";
 
 export function BrowserSection({
   startUrl,

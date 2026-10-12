@@ -226,7 +226,7 @@ Mark a profile **Ephemeral** in its editor (or `update_profile` with `ephemeral:
 
 ### Fresh launches
 
-Every launch opens exactly one tab: the profile's start page (DuckDuckGo by default — set it to `about:blank` for a bare window). Tabs from previous runs are never restored, and the "Restore pages?" bubble after a crashed run is suppressed. Cookies, logins, and storage still persist per profile across runs.
+Every launch opens exactly one tab: the profile's start page (douyin.com by default — set it to `about:blank` for a bare window). Tabs from previous runs are never restored, and the "Restore pages?" bubble after a crashed run is suppressed. Cookies, logins, and storage still persist per profile across runs.
 
 ### Browser windows
 

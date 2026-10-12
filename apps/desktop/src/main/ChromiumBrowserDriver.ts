@@ -690,7 +690,7 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
       }
     }
     // Start page (positional URL) — every launch opens exactly one tab: the
-    // profile's start page (defaults to DuckDuckGo; set it to about:blank for
+    // profile's start page (defaults to douyin.com; set it to about:blank for
     // a bare page). Session restore is off, so there is no returning-profile
     // case to special-case (verified on CloakBrowser 145 — pref
     // `startup_urls` is ignored there, a positional URL works). Must be the
