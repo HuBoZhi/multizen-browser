@@ -377,8 +377,10 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
     // Read the actual Chromium binary's version and reconcile the
     // profile's spoofed UA against it. Detection vendors fingerprint the
     // JS engine and compare against the claimed UA — claiming Chrome
-    // 148 while running 147 is an instant flag.
-    const actualVersion = await detectChromiumVersion(chromiumPath);
+    // 148 while running 147 is an instant flag. resolveBinaryVersion
+    // answers from the bootstrap's install record / the version dir — no
+    // process spawn on the managed-engine path.
+    const actualVersion = await resolveBinaryVersion(this.bootstrap, chromiumPath);
     // Reconcile (1) device family to host OS (claiming Win on a Mac
     //   binary is detected via V8/CSS feature signatures), then
     //   (2) Chrome version to the actual binary version. Both run
@@ -2097,6 +2099,42 @@ const WEBRTC_BLOCK_SCRIPT = `
 })();
 `;
 
+/** Match a Chromium version quad (e.g. `146.0.7680.177`) anywhere in a string. */
+function parseVersionQuad(s: string): { major: number; full: string } | null {
+  const m = /(\d+)\.(\d+)\.(\d+)\.(\d+)/.exec(s);
+  return m ? { major: Number(m[1]), full: `${m[1]}.${m[2]}.${m[3]}.${m[4]}` } : null;
+}
+
+/**
+ * Resolve the version of the binary a launch is about to use, WITHOUT
+ * spawning anything on the managed-engine path. Order:
+ *   1. the bootstrap's recorded install version — engines live in
+ *      version-named dirs (…/chromium/<engine>/146.0.7680.177.5/), so the
+ *      record is authoritative and free to read;
+ *   2. a version quad embedded in the binary path itself (covers
+ *      dev-system binaries outside the managed cache);
+ *   3. the `--version` spawn probe — POSIX only. On Windows that spawn
+ *      does not print or exit; it BOOTS a full GUI browser on its default
+ *      profile, which the 2s timeout then kills — the phantom window that
+ *      flashed open+closed before every real launch (and the reason UA
+ *      version reconciliation silently never ran on win32).
+ * Returns null when nothing worked; the caller keeps the version baked
+ * into the profile.
+ */
+async function resolveBinaryVersion(
+  bootstrap: ChromiumBootstrap,
+  binaryPath: string,
+): Promise<{ major: number; full: string } | null> {
+  const status = bootstrap.getStatus();
+  if (status.kind === "ready") {
+    const fromRecord = parseVersionQuad(status.version);
+    if (fromRecord) return fromRecord;
+  }
+  const fromPath = parseVersionQuad(binaryPath);
+  if (fromPath) return fromPath;
+  return detectChromiumVersion(binaryPath);
+}
+
 /**
  * Run `chromium --version` and parse the version triple. Returns null
  * if the probe fails — the caller should then trust whatever version is
@@ -2105,6 +2143,13 @@ const WEBRTC_BLOCK_SCRIPT = `
 async function detectChromiumVersion(
   binaryPath: string,
 ): Promise<{ major: number; full: string } | null> {
+  if (process.platform === "win32") {
+    // A GUI-subsystem chrome.exe ignores --version and starts the full
+    // browser instead (visible window, default user-data-dir). Never
+    // spawn it here — callers must use resolveBinaryVersion, which reads
+    // the version from the install record.
+    return null;
+  }
   return new Promise((resolve) => {
     let resolved = false;
     const done = (v: { major: number; full: string } | null): void => {
