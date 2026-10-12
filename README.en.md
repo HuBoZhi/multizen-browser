@@ -228,6 +228,10 @@ Mark a profile **Ephemeral** in its editor (or `update_profile` with `ephemeral:
 
 Every launch opens exactly one tab: the profile's start page (DuckDuckGo by default — set it to `about:blank` for a bare window). Tabs from previous runs are never restored, and the "Restore pages?" bubble after a crashed run is suppressed. Cookies, logins, and storage still persist per profile across runs.
 
+### Browser windows
+
+In **Settings → Browser window**, choose the primary, leftmost, rightmost, or MultiZen's current screen and toggle **Maximize on launch**. Changes save automatically and apply to the next browser launch from either the UI or MCP. By default, normal windows open centered on the primary screen. With one display, all choices use it; left and right follow the OS display arrangement. Each named app instance keeps its own preferences.
+
 ## Stack
 
 | Layer | Tech |

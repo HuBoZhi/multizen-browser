@@ -65,6 +65,17 @@ export const ZH: Record<string, string> = {
   "Export failed: {reason}": "导出失败：{reason}",
 
   // ── Settings ────────────────────────────────────────────────────────────
+  "Browser window": "浏览器窗口",
+  "Automatically saved. Applies the next time you launch a browser.":
+    "自动保存，下次启动浏览器时生效。",
+  "Open on screen": "打开屏幕",
+  "Primary screen": "主屏幕",
+  "Leftmost screen": "最左侧屏幕",
+  "Rightmost screen": "最右侧屏幕",
+  "Same screen as MultiZen": "跟随 MultiZen 所在屏幕",
+  "Maximize on launch": "启动时最大化",
+  "With one screen, all choices use that screen. Otherwise windows open centered in the selected screen's work area.":
+    "只有一块屏幕时，所有选项均使用该屏幕；多屏时，普通窗口居中打开在所选屏幕的可用区域。",
   "Loading…": "加载中…",
   "MCP server, archives, build info. Configuration is local — MultiZen does not call any external API on your behalf.":
     "MCP 服务器、归档与版本信息。所有配置仅保存在本地——MultiZen 不会替你调用任何外部 API。",

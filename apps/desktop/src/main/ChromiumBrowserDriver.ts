@@ -30,6 +30,11 @@ import type {
 } from "@multizen/types";
 import { waitForCdpSessionReady } from "./cdpReadiness";
 import type { BrowserEngine } from "@multizen/settings-store";
+import {
+  browserWindowPlacement,
+  applyBrowserWindowPlacement,
+  type BrowserWindowPreferences,
+} from "./browserWindowPlacement";
 import { CdpSession } from "@multizen/cdp-driver";
 import type { ChromiumBootstrap } from "./ChromiumBootstrap";
 import { startBridgeForProfile, stopBridgeForProfile } from "./socks5Bridge";
@@ -97,6 +102,8 @@ export interface ChromiumBrowserDriverOptions {
    * their own MCP transport (management-plane tools still work).
    */
   createRunServer?: RunServerFactory;
+  /** Live preferences, read once for each launch. */
+  getBrowserWindowPreferences?: () => BrowserWindowPreferences;
 }
 
 export type RunningStateChange =
@@ -158,6 +165,7 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
   private readonly extensionStoreRoot: string;
   private readonly runsRoot: string;
   private readonly createRunServer?: RunServerFactory;
+  private readonly getBrowserWindowPreferences?: () => BrowserWindowPreferences;
 
   constructor(opts: ChromiumBrowserDriverOptions) {
     super();
@@ -167,6 +175,7 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
     this.extensionStoreRoot = opts.extensionStoreRoot;
     this.runsRoot = opts.runsRoot;
     this.createRunServer = opts.createRunServer;
+    this.getBrowserWindowPreferences = opts.getBrowserWindowPreferences;
     // Recover run dirs orphaned by a previous host crash: their browsers
     // are long gone, so the files are unlocked — merge whatever identity
     // state never got synced, then delete. A dir that can't be synced (its
@@ -481,9 +490,16 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
     // larger than the monitor produced a window bigger than the screen (right
     // / bottom clipped, unreachable controls). window.screen stays spoofed at
     // the claimed size; a window LARGER than the display was its own anomaly.
-    const workArea = screen.getPrimaryDisplay().workArea;
-    const winW = Math.min(fp.screen.width, workArea.width);
-    const winH = Math.min(fp.screen.height, workArea.height);
+    const windowPreferences = this.getBrowserWindowPreferences?.() ?? {
+      screen: "primary",
+      maximized: false,
+    };
+    const windowPlacement = browserWindowPlacement(
+      windowPreferences,
+      fp.screen,
+      screen.getAllDisplays(),
+      screen.getPrimaryDisplay(),
+    );
     const args = [
       `--user-data-dir=${browserDataDir}`,
       `--remote-debugging-port=${port}`,
@@ -518,7 +534,8 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
       // Accept-Language: plain list, Chromium adds q-values.
       `--accept-lang=${acceptLangPlain}`,
       // Initial window size — clamped to the display (see above)
-      `--window-size=${winW},${winH}`,
+      `--window-size=${windowPlacement.width},${windowPlacement.height}`,
+      `--window-position=${windowPlacement.x},${windowPlacement.y}`,
     ];
     if (engine === "cloakbrowser") {
       // CloakBrowser implements fingerprint patches in C++. Feed it
@@ -726,6 +743,12 @@ export class ChromiumBrowserDriver extends EventEmitter implements BrowserDriver
       await stopBridgeForProfile(profileId).catch(() => {});
       throw e;
     }
+
+    // Saved Chromium state can override spawn flags. Move in normal state
+    // first, then maximize on the chosen monitor rather than the old one.
+    await applyBrowserWindowPlacement(session, windowPlacement, windowPreferences.maximized).catch(
+      (e: unknown) => console.warn("[multizen] browser window placement failed:", e),
+    );
 
     // Apply per-target emulation: timezone, locale, Sec-CH-UA via
     // userAgentMetadata (works on stock Chromium — no patches needed!),

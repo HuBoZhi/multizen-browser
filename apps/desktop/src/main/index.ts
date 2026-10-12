@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeImage, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, screen, shell } from "electron";
 import { join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
@@ -391,6 +391,14 @@ app.whenReady().then(async () => {
     profileManager,
     chromiumBootstrap,
     extensionStoreRoot,
+    getBrowserWindowPreferences: () => ({
+        screen: cachedSettings!.browserWindowScreen,
+        maximized: cachedSettings!.browserWindowMaximized,
+        appDisplayId:
+          mainWindow && !mainWindow.isDestroyed()
+            ? screen.getDisplayMatching(mainWindow.getBounds()).id
+            : undefined,
+      }),
     // FR-6 T2: ephemeral profiles materialize per-launch working copies here.
     runsRoot: join(dataRoot, "runs"),
     // Run-model: every running browser instance gets its OWN MCP control

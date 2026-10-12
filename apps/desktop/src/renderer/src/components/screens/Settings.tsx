@@ -8,6 +8,7 @@ import {
   Eye,
   EyeOff,
   Globe,
+  Monitor,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -143,6 +144,44 @@ export function Settings({ onImport }: Props): JSX.Element {
               );
             })}
           </div>
+        </Row>
+
+        <Row
+          icon={<Monitor size={16} strokeWidth={1.5} />}
+          title={t("Browser window")}
+          desc={t("Automatically saved. Applies the next time you launch a browser.")}
+        >
+          <label className="flex items-center gap-3 text-[12px] text-neutral-300">
+            {t("Open on screen")}
+            <select
+              value={settings.browserWindowScreen}
+              onChange={(e) =>
+                void patch({
+                  browserWindowScreen: e.target.value as AppSettings["browserWindowScreen"],
+                })
+              }
+              className="h-9 px-3 rounded-lg bg-neutral-900 text-neutral-200 border border-white/15"
+            >
+              <option value="primary">{t("Primary screen")}</option>
+              <option value="leftmost">{t("Leftmost screen")}</option>
+              <option value="rightmost">{t("Rightmost screen")}</option>
+              <option value="app">{t("Same screen as MultiZen")}</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-2.5 mt-3 text-[12px] text-neutral-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={settings.browserWindowMaximized}
+              onChange={(e) => void patch({ browserWindowMaximized: e.target.checked })}
+              className="w-3.5 h-3.5 rounded accent-neutral-300"
+            />
+            {t("Maximize on launch")}
+          </label>
+          <p className="text-[11px] text-neutral-400 mt-2 leading-relaxed">
+            {t(
+              "With one screen, all choices use that screen. Otherwise windows open centered in the selected screen's work area.",
+            )}
+          </p>
         </Row>
 
         <Row

@@ -13,6 +13,7 @@ import { dirname, join } from "node:path";
  *     machine, never bundle. Slightly older Mac builds (145 vs 148 CFT).
  */
 export type BrowserEngine = "cft" | "cloakbrowser";
+export type BrowserWindowScreen = "primary" | "leftmost" | "rightmost" | "app";
 
 export interface AppSettings {
   /** Theme — "dark" only for now, kept for forward compatibility */
@@ -23,6 +24,10 @@ export interface AppSettings {
   mcpHttpPort: number;
   /** Which Chromium binary to download + run. Switching requires app restart. */
   browserEngine: BrowserEngine;
+  /** Physical display for newly launched browser windows. */
+  browserWindowScreen: BrowserWindowScreen;
+  /** Maximize new browser windows on the selected display. */
+  browserWindowMaximized: boolean;
   /**
    * Automatically check for + (on Windows/Linux) download app updates in the
    * background. On macOS the app can only notify, not auto-install. Manual
@@ -62,6 +67,8 @@ const DEFAULTS: AppSettings = {
   // Prefer CloakBrowser as the primary runtime. Chrome for Testing stays
   // available as a compatibility fallback from Settings.
   browserEngine: "cloakbrowser",
+  browserWindowScreen: "primary",
+  browserWindowMaximized: false,
   autoUpdate: true,
   engineAutoUpdate: true,
   // Opt-in. Never phone home unless the user explicitly turns this on.
@@ -91,6 +98,7 @@ export class SettingsStore {
     }
 
     const merged: AppSettings = { ...DEFAULTS, ...raw };
+    normalizeBrowserWindowSettings(merged);
     if (merged.browserEngine !== "cft" && merged.browserEngine !== "cloakbrowser") {
       merged.browserEngine = DEFAULTS.browserEngine;
     }
@@ -118,9 +126,19 @@ export class SettingsStore {
   async update(patch: Partial<AppSettings>): Promise<AppSettings> {
     const current = await this.load();
     const next = { ...current, ...patch };
+    normalizeBrowserWindowSettings(next);
     this.cache = next;
     writeFileSync(this.jsonPath, JSON.stringify(next, null, 2), "utf8");
     return next;
+  }
+}
+
+function normalizeBrowserWindowSettings(settings: AppSettings): void {
+  if (!["primary", "leftmost", "rightmost", "app"].includes(settings.browserWindowScreen)) {
+    settings.browserWindowScreen = DEFAULTS.browserWindowScreen;
+  }
+  if (typeof settings.browserWindowMaximized !== "boolean") {
+    settings.browserWindowMaximized = DEFAULTS.browserWindowMaximized;
   }
 }
 
